@@ -95,7 +95,7 @@
         const ChevronRight = (p) => <IconBase {...p}><path d="m9 18 6-6-6-6"/></IconBase>;
         const Plus = (p) => <IconBase {...p}><path d="M5 12h14"/><path d="M12 5v14"/></IconBase>;
         const TrendingUp = (p) => <IconBase {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></IconBase>;
-        const User = (p) => <IconBase {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></User>;
+        const User = (p) => <IconBase {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
         const MapPin = (p) => <IconBase {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></IconBase>;
         const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></IconBase>;
         const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
@@ -307,7 +307,7 @@
                         </Card>
 
                         <div className={`bg-amber-50 border border-amber-100 rounded-lg p-4 text-sm text-amber-900 flex gap-3 shadow-sm ${isEditing ? 'ring-2 ring-amber-200' : ''}`}>
-                            <div className="shrink-0 mt-0.5 text-amber-600"><IconBase size={20}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase></div>
+                            <div className="shrink-0 mt-0.5 text-amber-600"><User size={20} /></div>
                             <div className="w-full">
                                 <span className="font-bold block text-amber-800 mb-1">Notatka Trenera:</span>
                                 {isEditing ? <textarea value={training.coachNotes} placeholder="Wpisz cele treningowe..." onChange={(e) => onUpdateTraining(training.id, 'coachNotes', e.target.value)} className="w-full bg-white/50 border border-amber-200 rounded p-2 text-sm placeholder:text-amber-700/50 text-amber-900 outline-none focus:bg-white transition" rows="2" /> : training.coachNotes}
