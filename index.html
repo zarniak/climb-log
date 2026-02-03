@@ -97,7 +97,7 @@
         const TrendingUp = (p) => <IconBase {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></IconBase>;
         const User = (p) => <IconBase {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
         const MapPin = (p) => <IconBase {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></IconBase>;
-        const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></IconBase>;
+        const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></IconBase>;
         const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
         const Dumbbell = (p) => <IconBase {...p}><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></IconBase>;
         const Trash = (p) => <IconBase {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></IconBase>;
@@ -158,7 +158,9 @@
             return (
                 <div className="p-4 pt-6 space-y-4 pb-20 animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-slate-800">Twoje Treningi</h2>
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center">
+                            <Calendar className="mr-2 text-blue-600" /> Twoja Rozpiska
+                        </h2>
                         <button onClick={onAdd} className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition active:scale-95 flex items-center justify-center"><Plus size={24} /></button>
                     </div>
                     
@@ -392,7 +394,9 @@
 
             return (
                 <div className="p-4 pb-20 space-y-6 animate-fade-in">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center"><Table className="mr-2 text-blue-600" /> Historia Ćwiczenia</h2>
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center">
+                        <TrendingUp className="mr-2 text-blue-600" /> Postęp
+                    </h2>
                     
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Wybierz ćwiczenie</label>
@@ -748,20 +752,14 @@
                             onSelect={(id) => { setSelectedTrainingId(id); setIsEditing(false); }}
                             onAdd={handleAddTraining}
                         />
-                    ) : activeTab === 'analytics' ? (
-                        <AnalyticsView trainings={trainings} />
                     ) : (
-                        <div className="p-8 flex flex-col items-center justify-center h-[80vh] text-slate-400">
-                            <User size={48} className="mb-4 opacity-20"/>
-                            <p>Widok profilu w budowie</p>
-                        </div>
+                        <AnalyticsView trainings={trainings} />
                     )}
                     
                     {!selectedTrainingId && (
                         <div className="fixed bottom-0 max-w-md w-full bg-white/90 backdrop-blur-lg border-t border-slate-200 flex justify-around py-2 px-2 z-50">
-                            <button onClick={() => setActiveTab('trainings')} className={`flex flex-col items-center p-2 rounded-xl w-20 transition duration-300 ${activeTab === 'trainings' ? 'text-blue-600 bg-blue-50/50 scale-105' : 'text-slate-400 hover:text-slate-600'}`}><Calendar size={22} strokeWidth={activeTab === 'trainings' ? 2.5 : 2} /><span className="text-[10px] font-bold mt-1">Dziennik</span></button>
-                            <button onClick={() => setActiveTab('analytics')} className={`flex flex-col items-center p-2 rounded-xl w-20 transition duration-300 ${activeTab === 'analytics' ? 'text-blue-600 bg-blue-50/50 scale-105' : 'text-slate-400 hover:text-slate-600'}`}><TrendingUp size={22} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} /><span className="text-[10px] font-bold mt-1">Postęp</span></button>
-                            <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center p-2 rounded-xl w-20 transition duration-300 ${activeTab === 'profile' ? 'text-blue-600 bg-blue-50/50 scale-105' : 'text-slate-400 hover:text-slate-600'}`}><User size={22} strokeWidth={activeTab === 'profile' ? 2.5 : 2} /><span className="text-[10px] font-bold mt-1">Profil</span></button>
+                            <button onClick={() => setActiveTab('trainings')} className={`flex flex-col items-center p-2 rounded-xl w-32 transition duration-300 ${activeTab === 'trainings' ? 'text-blue-600 bg-blue-50/50 scale-105' : 'text-slate-400 hover:text-slate-600'}`}><Calendar size={22} strokeWidth={activeTab === 'trainings' ? 2.5 : 2} /><span className="text-[10px] font-bold mt-1">Rozpiska</span></button>
+                            <button onClick={() => setActiveTab('analytics')} className={`flex flex-col items-center p-2 rounded-xl w-32 transition duration-300 ${activeTab === 'analytics' ? 'text-blue-600 bg-blue-50/50 scale-105' : 'text-slate-400 hover:text-slate-600'}`}><TrendingUp size={22} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} /><span className="text-[10px] font-bold mt-1">Postęp</span></button>
                         </div>
                     )}
                 </div>
