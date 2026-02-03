@@ -35,9 +35,7 @@
     <!-- Error Handler -->
     <script>
         window.onerror = function(message, source, lineno, colno, error) {
-            // Ignoruj błędy resize observera (częste w Canvas/iframe)
             if (message.includes('ResizeObserver')) return;
-
             const errorContainer = document.createElement('div');
             errorContainer.innerHTML = `
                 <div style="position: fixed; top: 20px; left: 20px; right: 20px; z-index: 9999; padding: 20px; font-family: sans-serif; color: #7f1d1d; background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
@@ -53,13 +51,11 @@
     </script>
 
     <script type="module">
-        // Firebase Setup - Global Scope for React
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         try {
-            // Bezpieczne sprawdzanie zmiennych środowiskowych
             const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
@@ -68,23 +64,19 @@
                 window.auth = getAuth(app);
                 window.db = getFirestore(app);
                 window.appId = appId;
-                // Eksport funkcji do window
                 window.firestoreOps = { collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocs, writeBatch, signInAnonymously, signInWithCustomToken };
-                console.log("Firebase initialized successfully.");
+                console.log("Firebase initialized.");
             } else {
-                console.warn("Brak konfiguracji Firebase (__firebase_config). Aplikacja działa w trybie offline.");
                 window.isOffline = true;
             }
         } catch (e) {
-            console.error("Firebase init error:", e);
             window.isOffline = true;
         }
     </script>
 
     <script type="text/babel">
-        // Biblioteki
-        if (!window.React || !window.ReactDOM) throw new Error("Brak Reacta. Sprawdź sieć.");
-        const { useState, useEffect } = React;
+        if (!window.React || !window.ReactDOM) throw new Error("Brak Reacta.");
+        const { useState, useEffect, useRef } = React;
 
         // --- IKONY SVG ---
         const IconBase = ({ children, size = 24, className = "" }) => (
@@ -103,7 +95,7 @@
         const Trash = (p) => <IconBase {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></IconBase>;
         const ClipboardList = (p) => <IconBase {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
 
-        // --- KOMPONENTY ---
+        // --- KOMPONENTY UI ---
         const Card = ({ children, className = "" }) => (
             <div className={`bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden ${className}`}>{children}</div>
         );
@@ -112,8 +104,6 @@
             const colors = { neutral: 'bg-slate-100 text-slate-600', success: 'bg-emerald-100 text-emerald-700', warning: 'bg-amber-100 text-amber-700' };
             return <span className={`text-xs font-semibold px-2 py-1 rounded-full ${colors[type]}`}>{children}</span>;
         };
-
-        // --- DANE ---
 
         const EXERCISE_LIBRARY = [
             { id: 'ex_pull_australian', name: 'Podciąganie Australijskie', category: 'Siła' },
@@ -124,13 +114,6 @@
             { id: 'ex_bench_press', name: 'Wyciskanie na klatę', category: 'Siła' },
         ];
 
-        // --- HELPERS ---
-
-        const checkIsCompleted = (t) => {
-            if (t.isCompleted !== undefined) return t.isCompleted;
-            return !!t.weight;
-        };
-
         const generateCalendarLink = (training) => {
             const text = encodeURIComponent(`Trening Wspinaczkowy @ ${training.location}`);
             const details = encodeURIComponent(`Plan: ${training.coachNotes}`);
@@ -138,97 +121,56 @@
             return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&details=${details}&dates=${dates}`;
         };
 
-        // --- ZEWNĘTRZNE KOMPONENTY WIDOKÓW ---
+        // --- WIDOKI ---
 
         const TrainingListView = ({ trainings, onSelect, onAdd }) => {
             const [viewMode, setViewMode] = useState('planned');
-            
-            const filteredTrainings = trainings.filter(t => {
-                const isCompleted = checkIsCompleted(t);
-                return viewMode === 'planned' ? !isCompleted : isCompleted;
-            });
-            
-            const sortedTrainings = [...filteredTrainings].sort((a, b) => {
-                const dateA = new Date(a.date);
-                const dateB = new Date(b.date);
-                return viewMode === 'planned' ? dateA - dateB : dateB - dateA;
-            });
+            const filtered = trainings.filter(t => (t.isCompleted || !!t.weight) === (viewMode === 'completed'));
+            const sorted = [...filtered].sort((a, b) => viewMode === 'planned' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date));
 
             return (
                 <div className="p-4 pt-6 space-y-4 pb-20 animate-fade-in">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-slate-800 flex items-center">
-                            <Calendar className="mr-2 text-blue-600" /> Twoja Rozpiska
-                        </h2>
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center"><Calendar className="mr-2 text-blue-600" /> Twoja Rozpiska</h2>
                         <button onClick={onAdd} className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition active:scale-95 flex items-center justify-center"><Plus size={24} /></button>
                     </div>
-                    
                     <div className="bg-slate-100 p-1 rounded-xl flex mb-6">
-                        <button onClick={() => setViewMode('planned')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${viewMode === 'planned' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Zaplanowane</button>
-                        <button onClick={() => setViewMode('completed')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${viewMode === 'completed' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Zakończone</button>
+                        <button onClick={() => setViewMode('planned')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${viewMode === 'planned' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>Zaplanowane</button>
+                        <button onClick={() => setViewMode('completed')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${viewMode === 'completed' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}>Zakończone</button>
                     </div>
-
-                    {sortedTrainings.length === 0 ? (
-                        <div className="text-center py-12 text-slate-400">
-                            <ClipboardList className="mx-auto mb-3 opacity-20" size={48} />
-                            {viewMode === 'planned' ? 'Brak zaplanowanych treningów 🎉' : 'Brak historii treningów'}
-                        </div>
+                    {sorted.length === 0 ? (
+                        <div className="text-center py-12 text-slate-400"><ClipboardList className="mx-auto mb-3 opacity-20" size={48} />{viewMode === 'planned' ? 'Brak zaplanowanych treningów 🎉' : 'Brak historii treningów'}</div>
                     ) : (
-                        sortedTrainings.map((training) => {
-                            const isCompleted = checkIsCompleted(training);
-                            return (
-                                <Card key={training.id} className="mb-4 hover:shadow-md transition duration-300">
-                                    <div className="p-4 cursor-pointer" onClick={() => onSelect(training.id)}>
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <div className={`text-sm font-semibold uppercase tracking-wide ${isCompleted ? 'text-emerald-600' : 'text-blue-600'}`}>{new Date(training.date).toLocaleDateString('pl-PL', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
-                                                <div className="flex items-center text-slate-600 mt-1"><MapPin size={14} className="mr-1" /><span className="text-sm">{training.location}</span></div>
-                                            </div>
-                                            {isCompleted ? <Badge type="success">Ukończony</Badge> : <Badge type="warning">Zaplanowany</Badge>}
+                        sorted.map((t) => (
+                            <Card key={t.id} className="mb-4 hover:shadow-md transition duration-300">
+                                <div className="p-4 cursor-pointer" onClick={() => onSelect(t.id)}>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <div className={`text-sm font-semibold uppercase ${t.isCompleted || !!t.weight ? 'text-emerald-600' : 'text-blue-600'}`}>{new Date(t.date).toLocaleDateString('pl-PL', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+                                            <div className="flex items-center text-slate-600 mt-1"><MapPin size={14} className="mr-1" /><span className="text-sm">{t.location || 'Brak lokalizacji'}</span></div>
                                         </div>
-                                        <div className="mt-3 space-y-1">
-                                            {training.exercises.slice(0, 2).map((ex, idx) => {
-                                                const def = EXERCISE_LIBRARY.find(e => e.id === ex.exerciseId);
-                                                return (
-                                                    <div key={idx} className="text-sm text-slate-500 flex items-center justify-between">
-                                                        <div className="flex items-center">
-                                                            <div className={`w-1.5 h-1.5 rounded-full mr-2 ${isCompleted ? 'bg-emerald-300' : 'bg-slate-300'}`}></div>
-                                                            {def?.name}
-                                                        </div>
-                                                        <span className="text-xs font-mono text-slate-400 ml-2">{ex.series}x{ex.reps} | {ex.load}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                            {training.exercises.length > 2 && <div className="text-xs text-slate-400 pl-4">+ {training.exercises.length - 2} więcej</div>}
-                                        </div>
-                                        {isCompleted && training.feedback && (
-                                            <div className="mt-3 pt-3 border-t border-slate-100 flex items-start gap-2 text-xs text-slate-600 italic">
-                                                <MessageSquare size={14} className="shrink-0 mt-0.5 text-slate-400" />
-                                                <span className="line-clamp-2">{training.feedback}</span>
-                                            </div>
-                                        )}
+                                        {t.isCompleted || !!t.weight ? <Badge type="success">Ukończony</Badge> : <Badge type="warning">Zaplanowany</Badge>}
                                     </div>
-                                </Card>
-                            );
-                        })
+                                    <div className="mt-3 space-y-1">
+                                        {t.exercises.slice(0, 2).map((ex, idx) => (
+                                            <div key={idx} className="text-sm text-slate-500 flex justify-between">
+                                                <span>• {EXERCISE_LIBRARY.find(e => e.id === ex.exerciseId)?.name}</span>
+                                                <span className="text-xs font-mono text-slate-400">{ex.series}x{ex.reps}</span>
+                                            </div>
+                                        ))}
+                                        {t.exercises.length > 2 && <div className="text-xs text-slate-400 pl-4">+ {t.exercises.length - 2} więcej</div>}
+                                    </div>
+                                </div>
+                            </Card>
+                        ))
                     )}
                 </div>
             );
         };
 
-        const TrainingDetailView = ({ 
-            training, 
-            isEditing, 
-            onToggleEdit, 
-            onClose, 
-            onUpdateTraining, 
-            onUpdateExercise, 
-            onAddExercise, 
-            onDeleteExercise,
-            onDeleteTraining
-        }) => {
+        const TrainingDetailView = ({ training, isEditing, onToggleEdit, onClose, onUpdateTraining, onUpdateExercise, onAddExercise, onDeleteExercise, onDeleteTraining }) => {
             if (!training) return null;
-            const isCompleted = checkIsCompleted(training);
+            const isCompleted = training.isCompleted || !!training.weight;
 
             return (
                 <div className="pb-24 animate-fade-in">
@@ -236,33 +178,16 @@
                         <button onClick={onClose} className="text-slate-500 hover:text-slate-800 flex items-center"><ChevronRight className="rotate-180 mr-1" size={20} /> Wróć</button>
                         <h2 className="font-bold text-slate-800">Szczegóły</h2>
                         <div className="flex items-center gap-2">
-                            {isEditing && (
-                                <button 
-                                    onClick={() => onDeleteTraining(training.id)}
-                                    className="p-2 text-red-500 hover:bg-red-50 rounded-full transition"
-                                    title="Usuń cały trening"
-                                >
-                                    <Trash size={20} />
-                                </button>
-                            )}
-                            <button onClick={onToggleEdit} className={`flex items-center text-sm font-medium px-4 py-1.5 rounded-full transition ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{isEditing ? <span>Zapisz</span> : 'Edytuj'}</button>
+                            {isEditing && <button onClick={() => onDeleteTraining(training.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-full transition"><Trash size={20} /></button>}
+                            <button onClick={onToggleEdit} className={`text-sm font-medium px-4 py-1.5 rounded-full transition ${isEditing ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{isEditing ? 'Gotowe' : 'Edytuj'}</button>
                         </div>
                     </div>
-
                     <div className="p-4 space-y-6">
                         <Card className={`p-5 text-white shadow-lg ${isCompleted ? 'bg-gradient-to-br from-emerald-700 to-teal-900' : 'bg-gradient-to-br from-slate-800 to-slate-900'}`}>
                             <div className="flex justify-between items-start">
                                 <div className="w-full">
                                     {isEditing ? (
-                                        <div className="mb-2">
-                                            <label className="text-[10px] text-slate-300 uppercase tracking-wider block mb-1">Data treningu</label>
-                                            <input 
-                                                type="date" 
-                                                value={training.date} 
-                                                onChange={(e) => onUpdateTraining(training.id, 'date', e.target.value)} 
-                                                className="bg-white/20 border border-white/30 rounded px-2 py-1 text-white text-lg font-bold outline-none focus:bg-white/30 transition w-full"
-                                            />
-                                        </div>
+                                        <input type="date" value={training.date} onChange={(e) => onUpdateTraining(training.id, 'date', e.target.value)} className="bg-white/20 border-white/30 rounded px-2 py-1 text-white text-lg font-bold outline-none w-full" />
                                     ) : (
                                         <>
                                             <h1 className="text-2xl font-bold capitalize">{new Date(training.date).toLocaleDateString('pl-PL', { weekday: 'long' })}</h1>
@@ -271,125 +196,68 @@
                                     )}
                                     <div className="flex items-center mt-2 text-sm text-slate-200">
                                         <MapPin size={14} className="mr-1" />
-                                        {isEditing ? 
-                                            <input value={training.location} onChange={(e) => onUpdateTraining(training.id, 'location', e.target.value)} className="bg-white/10 border-none rounded p-1 text-white text-sm w-full outline-none focus:bg-white/20" placeholder="Lokalizacja..." /> 
-                                            : 
-                                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(training.location)}`} target="_blank" rel="noopener noreferrer" className="hover:text-white hover:underline transition-colors">{training.location}</a>
-                                        }
+                                        {isEditing ? <input value={training.location} onChange={(e) => onUpdateTraining(training.id, 'location', e.target.value)} className="bg-white/10 border-none rounded p-1 text-white text-sm w-full outline-none" placeholder="Lokalizacja..." /> : <span>{training.location || 'Brak lokalizacji'}</span>}
                                     </div>
                                 </div>
-                                {!isEditing && <a href={generateCalendarLink(training)} target="_blank" className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition backdrop-blur-sm"><CalendarPlus size={20} /></a>}
+                                {!isEditing && <a href={generateCalendarLink(training)} target="_blank" className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition"><CalendarPlus size={20} /></a>}
                             </div>
-                            <div className="mt-6 pt-4 border-t border-white/10 flex gap-4">
+                            <div className="mt-6 pt-4 border-t border-white/10 flex gap-4 text-sm">
                                 <div className="flex-1">
-                                    <label className="text-xs text-slate-300 uppercase tracking-wider font-semibold">Waga (kg)</label>
-                                    {isEditing ? <input type="number" step="0.1" value={training.weight || ''} onChange={(e) => onUpdateTraining(training.id, 'weight', e.target.value)} className="w-full bg-black/20 text-white rounded px-2 py-1 mt-1 border border-white/10 focus:border-emerald-400 outline-none transition" placeholder="np. 72.5" /> : <div className="text-xl font-medium mt-1">{training.weight || '--'} kg</div>}
+                                    <label className="text-slate-300 block mb-1">Waga (kg)</label>
+                                    {isEditing ? <input type="number" step="0.1" value={training.weight || ''} onChange={(e) => onUpdateTraining(training.id, 'weight', e.target.value)} className="w-full bg-black/20 text-white rounded px-2 py-1 border border-white/10 outline-none" /> : <div>{training.weight || '--'} kg</div>}
                                 </div>
                                 <div className="flex-1">
-                                    <label className="text-xs text-slate-300 uppercase tracking-wider font-semibold">Status</label>
+                                    <label className="text-slate-300 block mb-1">Status</label>
                                     {isEditing ? (
-                                        <select
-                                            value={isCompleted ? 'true' : 'false'}
-                                            onChange={(e) => onUpdateTraining(training.id, 'isCompleted', e.target.value === 'true')}
-                                            className="w-full bg-black/20 text-white rounded px-2 py-1 mt-1 border border-white/10 focus:border-emerald-400 outline-none transition text-sm font-medium"
-                                        >
+                                        <select value={isCompleted ? 'true' : 'false'} onChange={(e) => onUpdateTraining(training.id, 'isCompleted', e.target.value === 'true')} className="w-full bg-black/20 text-white rounded px-2 py-1 border border-white/10 outline-none">
                                             <option value="false" className="text-slate-800">Zaplanowany</option>
                                             <option value="true" className="text-slate-800">Ukończony</option>
                                         </select>
-                                    ) : (
-                                        <div className="flex items-center mt-1 font-medium text-white">
-                                            <CheckCircle size={18} className="mr-1.5" />
-                                            {isCompleted ? 'Ukończony' : 'Do zrobienia'}
-                                        </div>
-                                    )}
+                                    ) : <div className="flex items-center">{isCompleted ? 'Ukończony' : 'Do zrobienia'}</div>}
                                 </div>
                             </div>
                         </Card>
-
-                        <div className={`bg-amber-50 border border-amber-100 rounded-lg p-4 text-sm text-amber-900 flex gap-3 shadow-sm ${isEditing ? 'ring-2 ring-amber-200' : ''}`}>
-                            <div className="shrink-0 mt-0.5 text-amber-600"><User size={20} /></div>
+                        <div className={`bg-amber-50 border border-amber-100 rounded-lg p-4 text-sm flex gap-3 ${isEditing ? 'ring-2 ring-amber-200' : ''}`}>
+                            <div className="shrink-0 text-amber-600"><User size={20} /></div>
                             <div className="w-full">
                                 <span className="font-bold block text-amber-800 mb-1">Notatka Trenera:</span>
-                                {isEditing ? <textarea value={training.coachNotes} placeholder="Wpisz cele treningowe..." onChange={(e) => onUpdateTraining(training.id, 'coachNotes', e.target.value)} className="w-full bg-white/50 border border-amber-200 rounded p-2 text-sm placeholder:text-amber-700/50 text-amber-900 outline-none focus:bg-white transition" rows="2" /> : training.coachNotes}
+                                {isEditing ? <textarea value={training.coachNotes} placeholder="Wpisz cele..." onChange={(e) => onUpdateTraining(training.id, 'coachNotes', e.target.value)} className="w-full bg-white/50 border border-amber-200 rounded p-2 outline-none" rows="2" /> : training.coachNotes || 'Brak notatek'}
                             </div>
                         </div>
-
                         <div className="space-y-4">
                             <h3 className="font-bold text-slate-800 text-lg flex items-center"><Dumbbell className="mr-2 text-slate-400" size={20} /> Plan Treningowy</h3>
-                            {training.exercises.map((ex, idx) => {
-                                const def = EXERCISE_LIBRARY.find(e => e.id === ex.exerciseId);
-                                return (
-                                    <Card key={idx} className="p-0 overflow-hidden border-slate-200 relative group">
-                                        {isEditing && (
-                                            <button onClick={() => onDeleteExercise(training.id, idx)} className="absolute top-2 right-2 z-10 p-1.5 bg-white/80 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full shadow-sm transition" title="Usuń ćwiczenie"><Trash size={16} /></button>
-                                        )}
-                                        <div className="p-4">
-                                            <div className="flex justify-between items-start mb-2">
-                                                {isEditing ? (
-                                                    <div className="w-full pr-8">
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Rodzaj ćwiczenia</span>
-                                                        <select value={ex.exerciseId} onChange={(e) => onUpdateExercise(training.id, idx, 'exerciseId', e.target.value)} className="w-full font-bold text-slate-700 bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none pb-1">
-                                                            {EXERCISE_LIBRARY.map(libEx => (<option key={libEx.id} value={libEx.id}>{libEx.name}</option>))}
-                                                        </select>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <h4 className="font-bold text-slate-700">{def?.name}</h4>
-                                                        <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded text-slate-500">{def?.category}</span>
-                                                    </>
-                                                )}
+                            {training.exercises.map((ex, idx) => (
+                                <Card key={idx} className="p-4 relative">
+                                    {isEditing && <button onClick={() => onDeleteExercise(training.id, idx)} className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500"><Trash size={16} /></button>}
+                                    <div className="mb-2">
+                                        {isEditing ? (
+                                            <select value={ex.exerciseId} onChange={(e) => onUpdateExercise(training.id, idx, 'exerciseId', e.target.value)} className="w-full font-bold text-slate-700 bg-transparent border-b border-slate-300 outline-none pb-1">
+                                                {EXERCISE_LIBRARY.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                                            </select>
+                                        ) : <h4 className="font-bold text-slate-700">{EXERCISE_LIBRARY.find(l => l.id === ex.exerciseId)?.name}</h4>}
+                                    </div>
+                                    <div className="mb-3">
+                                        {isEditing ? <textarea value={ex.description} onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm outline-none placeholder:text-slate-400" placeholder="Opis ćwiczenia..." /> : <div className="text-sm text-slate-600 italic bg-slate-50 p-2 rounded">{ex.description || 'Brak opisu'}</div>}
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                                        {['series', 'reps', 'load'].map(f => (
+                                            <div key={f}>
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase">{f === 'load' ? 'Trudność' : f === 'series' ? 'Serie' : 'Powt.'}</span>
+                                                {isEditing ? <input type="text" value={ex[f]} onChange={(e) => onUpdateExercise(training.id, idx, f, e.target.value)} className="w-full text-center bg-slate-50 border border-slate-200 rounded p-1 text-sm outline-none" /> : <div className="font-mono font-bold text-slate-700">{ex[f]}</div>}
                                             </div>
-
-                                            {/* OPIS ZADANIA */}
-                                            <div className="mb-3">
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Instrukcja / Opis</span>
-                                                {isEditing ? (
-                                                    <textarea 
-                                                        value={ex.description || ''} 
-                                                        onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} 
-                                                        className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm min-h-[50px] focus:border-blue-500 outline-none placeholder:text-slate-400 text-slate-700 focus:bg-white transition" 
-                                                        placeholder="Opisz jak wykonać ćwiczenie..."
-                                                    />
-                                                ) : (
-                                                    <div className="text-sm text-slate-700 bg-slate-50 border border-slate-100 rounded p-2 italic">
-                                                        {ex.description || "Brak dodatkowego opisu."}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* GRID PARAMETRÓW */}
-                                            <div className="grid grid-cols-3 gap-2 mb-3">
-                                                <div>
-                                                    <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Serie</span>
-                                                    {isEditing ? <input type="number" value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} className="w-full text-center bg-slate-50 border border-slate-200 rounded p-1 text-sm text-slate-700 outline-none focus:bg-white transition" /> : <div className="text-center font-mono font-bold text-slate-700 bg-slate-50 rounded p-1">{ex.series}</div>}
-                                                </div>
-                                                <div>
-                                                    <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Powt.</span>
-                                                    {isEditing ? <input type="text" value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} className="w-full text-center bg-slate-50 border border-slate-200 rounded p-1 text-sm text-slate-700 outline-none focus:bg-white transition" /> : <div className="text-center font-mono font-bold text-slate-700 bg-slate-50 rounded p-1">{ex.reps}</div>}
-                                                </div>
-                                                <div>
-                                                    <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Trudność</span>
-                                                    {isEditing ? <input type="text" value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} className="w-full text-center bg-slate-50 border border-slate-200 rounded p-1 text-sm text-slate-700 outline-none focus:bg-white transition" /> : <div className="text-center font-mono font-bold text-slate-700 bg-slate-50 rounded p-1">{ex.load}</div>}
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <span className="text-[10px] font-bold text-blue-500 uppercase block mb-1">Twój Wynik / Notatka</span>
-                                                {isEditing ? <input className="w-full text-sm p-2 border border-blue-200 rounded bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition placeholder:text-blue-300 text-slate-700" placeholder="np. ostatnia seria do upadku" value={ex.actual || ''} onChange={(e) => onUpdateExercise(training.id, idx, 'actual', e.target.value)} /> : <div className={`text-sm border-l-2 pl-2 ${ex.actual ? 'border-emerald-500 text-slate-800' : 'border-slate-200 text-slate-400 italic'}`}>{ex.actual || 'Brak wpisu'}</div>}
-                                            </div>
-                                        </div>
-                                    </Card>
-                                );
-                            })}
-
-                            {isEditing && (
-                                <button onClick={() => onAddExercise(training.id)} className="w-full py-4 border-2 border-dashed border-blue-200 rounded-xl text-blue-500 font-semibold flex items-center justify-center hover:bg-blue-50 hover:border-blue-300 transition group"><Plus size={20} className="mr-2 group-hover:scale-110 transition-transform" /> Dodaj ćwiczenie</button>
-                            )}
+                                        ))}
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] font-bold text-blue-500 uppercase">Twój Wynik</span>
+                                        {isEditing ? <input value={ex.actual} onChange={(e) => onUpdateExercise(training.id, idx, 'actual', e.target.value)} className="w-full text-sm p-2 border border-blue-200 rounded bg-blue-50 outline-none" placeholder="Co udało się zrobić?" /> : <div className={`text-sm border-l-2 pl-2 ${ex.actual ? 'border-emerald-500' : 'border-slate-200 italic text-slate-400'}`}>{ex.actual || 'Brak wpisu'}</div>}
+                                    </div>
+                                </Card>
+                            ))}
+                            {isEditing && <button onClick={() => onAddExercise(training.id)} className="w-full py-3 border-2 border-dashed border-blue-200 rounded-xl text-blue-500 font-semibold flex items-center justify-center hover:bg-blue-50 transition"><Plus size={20} className="mr-2" /> Dodaj ćwiczenie</button>}
                         </div>
-
                         <div className="space-y-2">
-                            <h3 className="font-bold text-slate-800 flex items-center text-lg"><MessageSquare size={20} className="mr-2 text-slate-400" /> {isCompleted ? "Twoje Odczucia (Zapisane)" : "Twoje Odczucia (Po treningu)"}</h3>
-                            {isEditing ? <textarea className="w-full p-3 rounded-xl border border-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm min-h-[100px] placeholder:text-slate-400 text-slate-700 focus:bg-white transition" placeholder="Jak się czułeś? Co bolało? Jak oceniasz trudność?" value={training.feedback || ''} onChange={(e) => onUpdateTraining(training.id, 'feedback', e.target.value)} /> : <div className={`p-4 rounded-xl border text-sm leading-relaxed ${training.feedback ? 'bg-white border-slate-200 text-slate-700' : 'bg-slate-50 border-slate-100 text-slate-400 italic'}`}>{training.feedback ? `"${training.feedback}"` : 'Brak feedbacku. Edytuj, aby dodać notatkę po treningu.'}</div>}
+                            <h3 className="font-bold text-slate-800 text-lg flex items-center"><MessageSquare size={20} className="mr-2 text-slate-400" /> Odczucia</h3>
+                            {isEditing ? <textarea value={training.feedback || ''} onChange={(e) => onUpdateTraining(training.id, 'feedback', e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm min-h-[100px]" placeholder="Jak poszło?" /> : <div className="p-4 bg-slate-50 rounded-xl border text-sm italic">{training.feedback || 'Brak feedbacku.'}</div>}
                         </div>
                     </div>
                 </div>
@@ -397,293 +265,167 @@
         };
 
         const AnalyticsView = ({ trainings }) => {
-            const [statExerciseId, setStatExerciseId] = useState(EXERCISE_LIBRARY[1].id); 
-            
-            const stats = trainings
-                .filter(t => t.exercises.some(e => e.exerciseId === statExerciseId))
-                .map(t => {
-                    const ex = t.exercises.find(e => e.exerciseId === statExerciseId);
-                    const isCompleted = checkIsCompleted(t);
-                    return {
-                        id: t.id,
-                        date: t.date,
-                        location: t.location,
-                        series: ex.series,
-                        reps: ex.reps,
-                        load: ex.load,
-                        actual: ex.actual,
-                        isCompleted: isCompleted
-                    };
-                })
-                .sort((a, b) => new Date(b.date) - new Date(a.date));
+            const [statExId, setStatExId] = useState(EXERCISE_LIBRARY[1].id);
+            const stats = trainings.filter(t => t.exercises.some(e => e.exerciseId === statExId)).sort((a, b) => new Date(b.date) - new Date(a.date));
 
             return (
                 <div className="p-4 pb-20 space-y-6 animate-fade-in">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center">
-                        <TrendingUp className="mr-2 text-blue-600" /> Postęp
-                    </h2>
-                    
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center"><TrendingUp className="mr-2 text-blue-600" /> Postęp</h2>
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Wybierz ćwiczenie</label>
-                        <select value={statExerciseId} onChange={(e) => setStatExerciseId(e.target.value)} className="w-full p-2.5 rounded-lg border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium">{EXERCISE_LIBRARY.map(ex => (<option key={ex.id} value={ex.id}>{ex.name}</option>))}</select>
+                        <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Ćwiczenie</label>
+                        <select value={statExId} onChange={(e) => setStatExId(e.target.value)} className="w-full p-2.5 rounded-lg border border-slate-200 outline-none text-sm font-medium">{EXERCISE_LIBRARY.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}</select>
                     </div>
-
-                    {stats.length === 0 ? (
-                        <div className="text-center py-10 text-slate-400">Brak danych dla tego ćwiczenia.</div>
-                    ) : (
-                        <div className="space-y-3">
-                            {stats.map((entry) => (
-                                <Card key={entry.id} className="p-3 border-l-4 border-l-blue-500">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <span className="text-xs font-bold text-slate-500">{new Date(entry.date).toLocaleDateString('pl-PL')}</span>
-                                        {entry.isCompleted ? <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Zrealizowane</span> : <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Plan</span>}
-                                    </div>
-                                    
-                                    <div className="flex items-baseline gap-2 mb-2">
-                                        <div className="text-lg font-bold text-slate-800">{entry.series} <span className="text-xs font-normal text-slate-400">serii</span></div>
-                                        <div className="text-lg font-bold text-slate-800">x {entry.reps}</div>
-                                        <div className="ml-auto bg-slate-100 px-2 py-1 rounded text-sm font-mono font-medium text-slate-700">{entry.load}</div>
-                                    </div>
-                                    
-                                    {entry.actual && (
-                                        <div className="text-xs text-slate-600 italic bg-slate-50 p-2 rounded border border-slate-100 mt-2">
-                                            "{entry.actual}"
-                                        </div>
-                                    )}
-                                </Card>
-                            ))}
-                        </div>
-                    )}
+                    {stats.length === 0 ? <div className="text-center py-10 text-slate-400">Brak danych.</div> : stats.map(t => {
+                        const ex = t.exercises.find(e => e.exerciseId === statExId);
+                        return (
+                            <Card key={t.id} className="p-3 border-l-4 border-l-blue-500">
+                                <div className="flex justify-between text-xs font-bold text-slate-500 mb-2"><span>{new Date(t.date).toLocaleDateString('pl-PL')}</span>{t.isCompleted || !!t.weight ? <span className="text-emerald-600">Zrealizowane</span> : <span className="text-amber-600">Plan</span>}</div>
+                                <div className="flex items-baseline gap-2">
+                                    <div className="text-lg font-bold text-slate-800">{ex.series} x {ex.reps}</div>
+                                    <div className="ml-auto bg-slate-100 px-2 py-1 rounded text-sm font-mono">{ex.load}</div>
+                                </div>
+                                {ex.actual && <div className="text-xs text-slate-600 italic mt-2 bg-slate-50 p-2 rounded">"{ex.actual}"</div>}
+                            </Card>
+                        );
+                    })}
                 </div>
             );
         };
 
-        // DANE STARTOWE (Seeding)
-        const INITIAL_SEED_DATA = [
-            { 
-                id: 1, 
-                date: '2026-01-04', 
-                location: 'Groto Bulderownia Poznań', 
-                weight: 72.0, 
-                isCompleted: true,
-                feedback: 'Czułem moc, ale plank mnie zniszczył.', 
-                coachNotes: 'Pamiętaj o prostych plecach przy australijskich.', 
-                exercises: [
-                    { exerciseId: 'ex_pull_australian', description: 'Dynamiczny ruch w górę, powolne opuszczanie (3s)', series: 3, reps: '5', load: 'masy ciała', actual: 'Zrobione 3x5, zapas był' }, 
-                    { exerciseId: 'ex_plank', description: 'Trzymaj napięty brzuch, nie opuszczaj bioder', series: 5, reps: '40s', load: '-', actual: '4x40s, piąta seria tylko 20s' }, 
-                    { exerciseId: 'ex_climb_endurance', description: 'Wybierz zielone baldy, staraj się nie poprawiać chwytów', series: 1, reps: '38 ruchów', load: 'Zielona', actual: 'Doszedłem do 22, potem 27' }
-                ] 
-            }
-        ];
-
-        // --- APP ---
+        // --- GŁÓWNA APLIKACJA ---
 
         function App() {
             const [activeTab, setActiveTab] = useState('trainings');
-            const [trainings, setTrainings] = useState([]); 
-            const [selectedTrainingId, setSelectedTrainingId] = useState(null);
+            const [trainings, setTrainings] = useState([]);
+            const [selectedId, setSelectedId] = useState(null);
             const [isEditing, setIsEditing] = useState(false);
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
+            const saveTimeout = useRef(null);
 
-            // --- FIREBASE LOGIC ---
             useEffect(() => {
-                let unsubscribeSnapshot = null;
-                let unsubscribeAuth = null;
-
-                const initFirebase = async () => {
+                let unsubS = null; let unsubA = null;
+                const init = async () => {
                     let attempts = 0;
-                    while ((!window.firestoreOps || !window.auth) && attempts < 20) {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        attempts++;
-                    }
-
-                    if (!window.firestoreOps || !window.auth) {
-                        setTrainings(INITIAL_SEED_DATA);
-                        setLoading(false);
-                        return;
-                    }
-
-                    const { signInWithCustomToken, signInAnonymously, collection, query, getDocs, writeBatch, doc, onSnapshot } = window.firestoreOps;
-
+                    while (!window.firestoreOps && attempts < 20) { await new Promise(r => setTimeout(r, 100)); attempts++; }
+                    if (!window.firestoreOps) { setLoading(false); return; }
+                    const { signInAnonymously, signInWithCustomToken, collection, query, onSnapshot, getDocs, doc, setDoc } = window.firestoreOps;
                     try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(window.auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(window.auth);
-                        }
-                    } catch (error) {
-                        setTrainings(INITIAL_SEED_DATA);
-                        setLoading(false);
-                        return;
-                    }
-
-                    unsubscribeAuth = window.auth.onAuthStateChanged(async (currentUser) => {
-                        setUser(currentUser);
-                        if (currentUser) {
-                            const trainingsRef = collection(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings');
-                            const q = query(trainingsRef);
-
-                            try {
-                                const snapshot = await getDocs(q);
-                                if (snapshot.empty) {
-                                    const batch = writeBatch(window.db);
-                                    INITIAL_SEED_DATA.forEach(t => {
-                                        const docRef = doc(trainingsRef, t.id.toString());
-                                        batch.set(docRef, t);
-                                    });
-                                    await batch.commit();
-                                }
-                            } catch (e) {}
-
-                            unsubscribeSnapshot = onSnapshot(q, (snap) => {
-                                const loaded = snap.docs.map(d => d.data());
-                                setTrainings(loaded.sort((a, b) => new Date(b.date) - new Date(a.date)));
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(window.auth, __initial_auth_token);
+                        else await signInAnonymously(window.auth);
+                    } catch (e) { setLoading(false); return; }
+                    unsubA = window.auth.onAuthStateChanged(async (u) => {
+                        setUser(u);
+                        if (u) {
+                            const ref = collection(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings');
+                            unsubS = onSnapshot(query(ref), (snap) => {
+                                setTrainings(snap.docs.map(d => d.data()));
                                 setLoading(false);
-                            }, (err) => {
-                                setLoading(false);
-                            });
-                        } else {
-                            setLoading(false);
-                        }
+                            }, () => setLoading(false));
+                        } else setLoading(false);
                     });
                 };
-
-                initFirebase();
-
-                return () => {
-                    if (unsubscribeAuth) unsubscribeAuth();
-                    if (unsubscribeSnapshot) unsubscribeSnapshot();
-                };
+                init();
+                return () => { if (unsubS) unsubS(); if (unsubA) unsubA(); };
             }, []);
 
-            const saveTrainingToDb = async (training) => {
+            // FUNKCJA ZAPISU (Debounced)
+            const saveToDb = (training) => {
                 if (!user || !window.firestoreOps) return;
-                try {
-                    const docRef = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', training.id.toString());
-                    await window.firestoreOps.setDoc(docRef, training);
-                } catch (e) {}
+                if (saveTimeout.current) clearTimeout(saveTimeout.current);
+                saveTimeout.current = setTimeout(async () => {
+                    try {
+                        const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', training.id.toString());
+                        await window.firestoreOps.setDoc(ref, training);
+                        console.log("Auto-saved:", training.id);
+                    } catch (e) { console.error("Save error:", e); }
+                }, 800);
             };
 
-            const handleDeleteTraining = async (trainingId) => {
-                if (!confirm("Czy na pewno chcesz usunąć całą jednostkę treningową? Tej operacji nie można cofnąć.")) return;
-                
+            const handleUpdateT = (id, field, value) => {
+                setTrainings(prev => {
+                    const next = prev.map(t => t.id === id ? { ...t, [field]: value } : t);
+                    const updated = next.find(t => t.id === id);
+                    if (updated) saveToDb(updated);
+                    return next;
+                });
+            };
+
+            const handleUpdateE = (id, idx, field, value) => {
+                setTrainings(prev => {
+                    const next = prev.map(t => {
+                        if (t.id !== id) return t;
+                        const newEx = [...t.exercises];
+                        newEx[idx] = { ...newEx[idx], [field]: value };
+                        return { ...t, exercises: newEx };
+                    });
+                    const updated = next.find(t => t.id === id);
+                    if (updated) saveToDb(updated);
+                    return next;
+                });
+            };
+
+            const handleAddE = (id) => {
+                setTrainings(prev => {
+                    const next = prev.map(t => t.id === id ? { ...t, exercises: [...t.exercises, { exerciseId: EXERCISE_LIBRARY[0].id, description: '', series: 3, reps: '10', load: '-', actual: '' }] } : t);
+                    saveToDb(next.find(t => t.id === id));
+                    return next;
+                });
+            };
+
+            const handleDeleteE = (id, idx) => {
+                if(!confirm("Usuń ćwiczenie?")) return;
+                setTrainings(prev => {
+                    const next = prev.map(t => t.id === id ? { ...t, exercises: t.exercises.filter((_, i) => i !== idx) } : t);
+                    saveToDb(next.find(t => t.id === id));
+                    return next;
+                });
+            };
+
+            const handleDeleteT = async (id) => {
+                if (!confirm("Usuń cały trening?")) return;
                 if (user && window.firestoreOps) {
                     try {
-                        const docRef = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', trainingId.toString());
-                        await window.firestoreOps.deleteDoc(docRef);
-                        setSelectedTrainingId(null);
-                        setIsEditing(false);
-                    } catch (e) {
-                        console.error("Error deleting training:", e);
-                    }
-                } else {
-                    // Fallback offline
-                    setTrainings(prev => prev.filter(t => t.id !== trainingId));
-                    setSelectedTrainingId(null);
-                    setIsEditing(false);
+                        await window.firestoreOps.deleteDoc(window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', id.toString()));
+                        setSelectedId(null); setIsEditing(false);
+                    } catch (e) { console.error(e); }
                 }
             };
-            
-            const selectedTraining = trainings.find(t => t.id === selectedTrainingId);
 
-            const handleUpdateTraining = (trainingId, field, value) => {
-                setTrainings(prev => prev.map(t => t.id === trainingId ? { ...t, [field]: value } : t));
-            };
-
-            const handleUpdateExercise = (trainingId, exIndex, field, value) => {
-                setTrainings(prev => prev.map(t => {
-                    if (t.id !== trainingId) return t;
-                    const newExercises = [...t.exercises];
-                    newExercises[exIndex] = { ...newExercises[exIndex], [field]: value };
-                    return { ...t, exercises: newExercises };
-                }));
-            };
-
-            const handleAddExercise = (trainingId) => {
-                setTrainings(prev => prev.map(t => {
-                    if (t.id !== trainingId) return t;
-                    const newEx = {
-                        exerciseId: EXERCISE_LIBRARY[0].id,
-                        description: '',
-                        series: 3,
-                        reps: '10',
-                        load: '-',
-                        actual: ''
-                    };
-                    return { ...t, exercises: [...t.exercises, newEx] };
-                }));
-            };
-
-            const handleDeleteExercise = (trainingId, exIndex) => {
-                if(!confirm("Czy na pewno usunąć to ćwiczenie?")) return;
-                setTrainings(prev => prev.map(t => {
-                    if (t.id !== trainingId) return t;
-                    const newExercises = t.exercises.filter((_, idx) => idx !== exIndex);
-                    return { ...t, exercises: newExercises };
-                }));
-            };
-
-            const toggleEditMode = () => {
-                if (isEditing && selectedTraining) {
-                    saveTrainingToDb(selectedTraining);
-                }
-                setIsEditing(!isEditing);
-            };
-
-            const handleAddTraining = async () => {
-                const newId = Date.now();
-                const today = new Date().toISOString().split('T')[0];
-                
-                const newTraining = {
-                    id: newId,
-                    date: today,
-                    location: '',
-                    weight: null,
-                    isCompleted: false,
-                    feedback: '',
-                    coachNotes: '',
-                    exercises: [
-                        { exerciseId: 'ex_climb_endurance', description: '', series: 4, reps: '10', load: '6a', actual: '' }
-                    ]
-                };
-                
-                setTrainings(prev => [newTraining, ...prev]);
-                setSelectedTrainingId(newId);
+            const handleAddT = async () => {
+                const newT = { id: Date.now(), date: new Date().toISOString().split('T')[0], location: '', weight: null, isCompleted: false, feedback: '', coachNotes: '', exercises: [{ exerciseId: EXERCISE_LIBRARY[4].id, description: '', series: 3, reps: '1', load: '6a', actual: '' }] };
+                setTrainings(p => [newT, ...p]);
+                setSelectedId(newT.id);
                 setIsEditing(true);
-                await saveTrainingToDb(newTraining);
+                if (user && window.firestoreOps) {
+                    const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', newT.id.toString());
+                    await window.firestoreOps.setDoc(ref, newT);
+                }
             };
 
-            if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-medium">Synchronizacja z bazą...</div>;
+            if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-medium animate-pulse">Synchronizacja...</div>;
+
+            const selected = trainings.find(t => t.id === selectedId);
 
             return (
-                <div className="max-w-md mx-auto min-h-screen bg-slate-50 shadow-2xl relative">
-                    {selectedTrainingId ? (
+                <div className="max-w-md mx-auto min-h-screen bg-slate-50 shadow-2xl relative overflow-x-hidden">
+                    {selected ? (
                         <TrainingDetailView 
-                            training={selectedTraining}
-                            isEditing={isEditing}
-                            onToggleEdit={toggleEditMode}
-                            onClose={() => { setSelectedTrainingId(null); setIsEditing(false); }}
-                            onUpdateTraining={handleUpdateTraining}
-                            onUpdateExercise={handleUpdateExercise}
-                            onAddExercise={handleAddExercise}
-                            onDeleteExercise={handleDeleteExercise}
-                            onDeleteTraining={handleDeleteTraining}
+                            training={selected} isEditing={isEditing} 
+                            onToggleEdit={() => setIsEditing(!isEditing)} 
+                            onClose={() => { setSelectedId(null); setIsEditing(false); }}
+                            onUpdateTraining={handleUpdateT} onUpdateExercise={handleUpdateE}
+                            onAddExercise={handleAddE} onDeleteExercise={handleDeleteE} onDeleteTraining={handleDeleteT}
                         />
                     ) : activeTab === 'trainings' ? (
-                        <TrainingListView 
-                            trainings={trainings}
-                            onSelect={(id) => { setSelectedTrainingId(id); setIsEditing(false); }}
-                            onAdd={handleAddTraining}
-                        />
+                        <TrainingListView trainings={trainings} onSelect={(id) => { setSelectedId(id); setIsEditing(false); }} onAdd={handleAddT} />
                     ) : (
                         <AnalyticsView trainings={trainings} />
                     )}
-                    
-                    {!selectedTrainingId && (
-                        <div className="fixed bottom-0 max-w-md w-full bg-white/90 backdrop-blur-lg border-t border-slate-200 flex justify-around py-2 px-2 z-50">
-                            <button onClick={() => setActiveTab('trainings')} className={`flex flex-col items-center p-2 rounded-xl w-32 transition duration-300 ${activeTab === 'trainings' ? 'text-blue-600 bg-blue-50/50 scale-105' : 'text-slate-400 hover:text-slate-600'}`}><Calendar size={22} strokeWidth={activeTab === 'trainings' ? 2.5 : 2} /><span className="text-[10px] font-bold mt-1 uppercase">Rozpiska</span></button>
-                            <button onClick={() => setActiveTab('analytics')} className={`flex flex-col items-center p-2 rounded-xl w-32 transition duration-300 ${activeTab === 'analytics' ? 'text-blue-600 bg-blue-50/50 scale-105' : 'text-slate-400 hover:text-slate-600'}`}><TrendingUp size={22} strokeWidth={activeTab === 'analytics' ? 2.5 : 2} /><span className="text-[10px] font-bold mt-1 uppercase">Postęp</span></button>
+                    {!selected && (
+                        <div className="fixed bottom-0 max-w-md w-full bg-white/90 backdrop-blur-lg border-t border-slate-200 flex justify-around py-2 z-50">
+                            <button onClick={() => setActiveTab('trainings')} className={`flex flex-col items-center p-2 rounded-xl w-32 transition ${activeTab === 'trainings' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400'}`}><Calendar size={22} /><span className="text-[10px] font-bold mt-1 uppercase">Rozpiska</span></button>
+                            <button onClick={() => setActiveTab('analytics')} className={`flex flex-col items-center p-2 rounded-xl w-32 transition ${activeTab === 'analytics' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400'}`}><TrendingUp size={22} /><span className="text-[10px] font-bold mt-1 uppercase">Postęp</span></button>
                         </div>
                     )}
                 </div>
