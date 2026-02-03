@@ -264,15 +264,16 @@
                     unsubscribeAuth = window.auth.onAuthStateChanged(async (currentUser) => {
                         setUser(currentUser);
                         if (currentUser) {
-                            // Setup listener
-                            const trainingsRef = collection(window.db, 'artifacts', window.appId, 'users', currentUser.uid, 'trainings');
+                            // ZMIANA: Używamy ścieżki PUBLICZNEJ ('public/data/trainings'), 
+                            // aby każdy kto otworzy tę aplikację widział te same dane (Trener i Ty)
+                            const trainingsRef = collection(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings');
                             const q = query(trainingsRef);
 
                             // Check seed
                             try {
                                 const snapshot = await getDocs(q);
                                 if (snapshot.empty) {
-                                    console.log("Seeding database...");
+                                    console.log("Seeding shared database...");
                                     const batch = writeBatch(window.db);
                                     INITIAL_SEED_DATA.forEach(t => {
                                         const docRef = doc(trainingsRef, t.id.toString());
@@ -317,9 +318,10 @@
                 }
                 
                 try {
-                    const docRef = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'users', user.uid, 'trainings', training.id.toString());
+                    // ZMIANA: Zapisujemy do ścieżki PUBLICZNEJ ('public/data/trainings')
+                    const docRef = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', training.id.toString());
                     await window.firestoreOps.setDoc(docRef, training);
-                    console.log("Saved training", training.id);
+                    console.log("Saved shared training", training.id);
                 } catch (e) {
                     console.error("Error saving:", e);
                     // Nie alertuj uciążliwie
