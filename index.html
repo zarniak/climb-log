@@ -76,7 +76,7 @@
 
     <script type="text/babel">
         if (!window.React || !window.ReactDOM) throw new Error("Brak Reacta.");
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useCallback } = React;
 
         // --- IKONY SVG ---
         function IconBase({ children, size = 24, className = "" }) {
@@ -130,6 +130,7 @@
 
         function TrainingListView({ trainings, onSelect, onAdd }) {
             const [viewMode, setViewMode] = useState('planned');
+            // Zmieniono logikę: patrzymy tylko na t.isCompleted
             const filtered = trainings.filter(t => !!t.isCompleted === (viewMode === 'completed'));
             const sorted = [...filtered].sort((a, b) => viewMode === 'planned' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date));
 
@@ -183,7 +184,7 @@
                         <h2 className="font-bold text-slate-800">Szczegóły</h2>
                         <div className="flex items-center gap-2">
                             {isEditing && <button onClick={() => onDeleteTraining(training.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-full transition"><Trash size={20} /></button>}
-                            <button onClick={onToggleEdit} className={`text-sm font-medium px-4 py-1.5 rounded-full transition ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{isEditing ? 'Zapisz' : 'Edytuj'}</button>
+                            <button onClick={onToggleEdit} className={`text-sm font-medium px-4 py-1.5 rounded-full transition ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{isEditing ? 'Gotowe' : 'Edytuj'}</button>
                         </div>
                     </div>
                     <div className="p-4 space-y-6">
@@ -213,9 +214,13 @@
                                 <div className="flex-1">
                                     <label className="text-slate-300 block mb-1">Status</label>
                                     {isEditing ? (
-                                        <select value={isCompleted ? 'true' : 'false'} onChange={(e) => onUpdateTraining(training.id, 'isCompleted', e.target.value === 'true')} className="w-full bg-black/20 text-white rounded px-2 py-1 border border-white/10 outline-none">
-                                            <option value="false" className="text-slate-100">Zaplanowany</option>
-                                            <option value="true" className="text-slate-100">Ukończony</option>
+                                        <select 
+                                            value={isCompleted ? 'true' : 'false'} 
+                                            onChange={(e) => onUpdateTraining(training.id, 'isCompleted', e.target.value === 'true')} 
+                                            className="w-full bg-black/20 text-white rounded px-2 py-1 border border-white/10 outline-none"
+                                        >
+                                            <option value="false" className="text-slate-900">Zaplanowany</option>
+                                            <option value="true" className="text-slate-900">Ukończony</option>
                                         </select>
                                     ) : <div className="flex items-center">{isCompleted ? 'Ukończony' : 'Do zrobienia'}</div>}
                                 </div>
@@ -291,6 +296,8 @@
             );
         }
 
+        // --- GŁÓWNA APLIKACJA ---
+
         function App() {
             const [activeTab, setActiveTab] = useState('trainings');
             const [trainings, setTrainings] = useState([]);
@@ -306,7 +313,7 @@
                     let attempts = 0;
                     while (!window.firestoreOps && attempts < 20) { await new Promise(r => setTimeout(r, 100)); attempts++; }
                     if (!window.firestoreOps) { setLoading(false); return; }
-                    const { signInAnonymously, signInWithCustomToken, collection, query, onSnapshot, doc, setDoc } = window.firestoreOps;
+                    const { signInAnonymously, signInWithCustomToken, collection, query, onSnapshot } = window.firestoreOps;
                     try {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(window.auth, __initial_auth_token);
                         else await signInAnonymously(window.auth);
@@ -316,7 +323,10 @@
                         if (u) {
                             const ref = collection(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings');
                             unsubS = onSnapshot(query(ref), (snap) => {
-                                setTrainings(snap.docs.map(d => d.data()));
+                                // Pobieramy dane z serwera
+                                const data = snap.docs.map(d => d.data());
+                                // Sortujemy datami malejąco (najnowsze na górze)
+                                setTrainings(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
                                 setLoading(false);
                             }, () => setLoading(false));
                         } else setLoading(false);
@@ -326,16 +336,18 @@
                 return () => { if (unsubS) unsubS(); if (unsubA) unsubA(); };
             }, []);
 
-            const saveToDb = (training) => {
+            // FUNKCJA ZAPISU (Debounced - 300ms)
+            const saveToDb = useCallback((training) => {
                 if (!user || !window.firestoreOps) return;
                 if (saveTimeout.current) clearTimeout(saveTimeout.current);
                 saveTimeout.current = setTimeout(async () => {
                     try {
                         const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', training.id.toString());
                         await window.firestoreOps.setDoc(ref, training);
-                    } catch (e) { console.error("Save error:", e); }
-                }, 400); 
-            };
+                        console.log("Sync success:", training.id);
+                    } catch (e) { console.error("Sync error:", e); }
+                }, 300);
+            }, [user]);
 
             const handleUpdateT = (id, field, value) => {
                 setTrainings(prev => {
@@ -388,20 +400,30 @@
             };
 
             const handleAddT = async () => {
-                const newT = { id: Date.now(), date: new Date().toISOString().split('T')[0], location: '', weight: null, isCompleted: false, feedback: '', coachNotes: '', exercises: [{ exerciseId: EXERCISE_LIBRARY[4].id, description: '', series: 3, reps: '1', load: '6a', actual: '' }] };
+                const newId = Date.now();
+                const newT = { 
+                    id: newId, 
+                    date: new Date().toISOString().split('T')[0], 
+                    location: '', 
+                    weight: null, 
+                    isCompleted: false, 
+                    feedback: '', 
+                    coachNotes: '', 
+                    exercises: [{ exerciseId: EXERCISE_LIBRARY[4].id, description: '', series: 3, reps: '1', load: '6a', actual: '' }] 
+                };
                 
-                // Kluczowy fix: czekamy na zapis zanim zaktualizujemy lokalny stan, by snapshot nie nadpisał nas pusta lista
+                // KROK 1: Najpierw wymuszamy zapis w bazie
                 if (user && window.firestoreOps) {
-                    const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', newT.id.toString());
+                    const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', newId.toString());
                     await window.firestoreOps.setDoc(ref, newT);
                 }
                 
-                setTrainings(p => [newT, ...p]);
-                setSelectedId(newT.id);
+                // KROK 2: Dopiero po zapisie przechodzimy do edycji
+                setSelectedId(newId);
                 setIsEditing(true);
             };
 
-            if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-medium animate-pulse">Łączenie...</div>;
+            if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-medium animate-pulse">Synchronizacja danych...</div>;
 
             const selected = trainings.find(t => t.id === selectedId);
 
