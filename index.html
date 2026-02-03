@@ -210,54 +210,65 @@
 
             // --- FIREBASE LOGIC ---
             useEffect(() => {
-                const initAuth = async () => {
+                let unsubscribeSnapshot = null;
+                let unsubscribeAuth = null;
+
+                const initFirebase = async () => {
+                    // Oczekiwanie na załadowanie bibliotek Firebase (rozwiązuje race condition)
+                    while (!window.auth || !window.db || !window.firestoreOps) {
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+
+                    const { signInWithCustomToken, signInAnonymously, collection, query, getDocs, writeBatch, doc, setDoc, onSnapshot } = window.firestoreOps;
+
                     try {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await window.firestoreOps.signInWithCustomToken(window.auth, __initial_auth_token);
+                            await signInWithCustomToken(window.auth, __initial_auth_token);
                         } else {
-                            await window.firestoreOps.signInAnonymously(window.auth);
+                            await signInAnonymously(window.auth);
                         }
                     } catch (error) {
                         console.error("Auth error", error);
                     }
+
+                    unsubscribeAuth = window.auth.onAuthStateChanged(async (currentUser) => {
+                        setUser(currentUser);
+                        if (currentUser) {
+                            // Setup listener
+                            const trainingsRef = collection(window.db, 'artifacts', window.appId, 'users', currentUser.uid, 'trainings');
+                            const q = query(trainingsRef);
+
+                            // Check seed
+                            const snapshot = await getDocs(q);
+                            if (snapshot.empty) {
+                                console.log("Seeding database...");
+                                const batch = writeBatch(window.db);
+                                INITIAL_SEED_DATA.forEach(t => {
+                                    const docRef = doc(trainingsRef, t.id.toString());
+                                    batch.set(docRef, t);
+                                });
+                                await batch.commit();
+                            }
+
+                            // Listen
+                            unsubscribeSnapshot = onSnapshot(q, (snap) => {
+                                const loaded = snap.docs.map(d => d.data());
+                                // Sort locally
+                                setTrainings(loaded.sort((a, b) => b.id - a.id));
+                                setLoading(false);
+                            }, (err) => console.error("Snapshot error", err));
+                        } else {
+                            setLoading(false);
+                        }
+                    });
                 };
 
-                initAuth();
+                initFirebase();
 
-                const unsubscribeAuth = window.auth.onAuthStateChanged(async (currentUser) => {
-                    setUser(currentUser);
-                    if (currentUser) {
-                        // Setup listener
-                        const trainingsRef = window.firestoreOps.collection(window.db, 'artifacts', window.appId, 'users', currentUser.uid, 'trainings');
-                        const q = window.firestoreOps.query(trainingsRef);
-
-                        // Check seed
-                        const snapshot = await window.firestoreOps.getDocs(q);
-                        if (snapshot.empty) {
-                            console.log("Seeding database...");
-                            const batch = window.firestoreOps.writeBatch(window.db);
-                            INITIAL_SEED_DATA.forEach(t => {
-                                const docRef = window.firestoreOps.doc(trainingsRef, t.id.toString());
-                                batch.set(docRef, t);
-                            });
-                            await batch.commit();
-                        }
-
-                        // Listen
-                        const unsubscribeSnapshot = window.firestoreOps.onSnapshot(q, (snap) => {
-                            const loaded = snap.docs.map(d => d.data());
-                            // Sort locally
-                            setTrainings(loaded.sort((a, b) => b.id - a.id));
-                            setLoading(false);
-                        }, (err) => console.error("Snapshot error", err));
-
-                        return () => unsubscribeSnapshot();
-                    } else {
-                        setLoading(false);
-                    }
-                });
-
-                return () => unsubscribeAuth();
+                return () => {
+                    if (unsubscribeAuth) unsubscribeAuth();
+                    if (unsubscribeSnapshot) unsubscribeSnapshot();
+                };
             }, []);
 
             // Zapisz pojedynczy trening do bazy
