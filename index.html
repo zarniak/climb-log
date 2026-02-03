@@ -85,6 +85,7 @@
         const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
         const BrainCircuit = (p) => <IconBase {...p}><path d="M12 4.5a2.5 2.5 0 0 0-4.96-.46 2.5 2.5 0 0 0-1.98 3 2.5 2.5 0 0 0-1.32 3 2.5 2.5 0 0 0 .5 3.09 2.5 2.5 0 0 0 .76 3.01A2.5 2.5 0 0 0 12 19.5a2.5 2.5 0 0 0 4.5-1.36 2.5 2.5 0 0 0 .76-3.01 2.5 2.5 0 0 0 .5-3.09 2.5 2.5 0 0 0-1.32-3 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 12 4.5Z"/><path d="M12 10v4"/><path d="M8 8.5 12 13"/><path d="M16 8.5 12 13"/></IconBase>;
         const Dumbbell = (p) => <IconBase {...p}><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></IconBase>;
+        const Trash = (p) => <IconBase {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></IconBase>;
 
         // --- DANE ---
 
@@ -148,6 +149,27 @@
                     if (t.id !== trainingId) return t;
                     const newExercises = [...t.exercises];
                     newExercises[exIndex] = { ...newExercises[exIndex], [field]: value };
+                    return { ...t, exercises: newExercises };
+                }));
+            };
+
+            const handleAddExercise = (trainingId) => {
+                setTrainings(prev => prev.map(t => {
+                    if (t.id !== trainingId) return t;
+                    const newEx = {
+                        exerciseId: EXERCISE_LIBRARY[0].id,
+                        plan: '',
+                        actual: ''
+                    };
+                    return { ...t, exercises: [...t.exercises, newEx] };
+                }));
+            };
+
+            const handleDeleteExercise = (trainingId, exIndex) => {
+                if(!confirm("Czy na pewno usunąć to ćwiczenie?")) return;
+                setTrainings(prev => prev.map(t => {
+                    if (t.id !== trainingId) return t;
+                    const newExercises = t.exercises.filter((_, idx) => idx !== exIndex);
                     return { ...t, exercises: newExercises };
                 }));
             };
@@ -297,15 +319,41 @@
                                 {selectedTraining.exercises.map((ex, idx) => {
                                     const def = EXERCISE_LIBRARY.find(e => e.id === ex.exerciseId);
                                     return (
-                                        <Card key={idx} className="p-0 overflow-hidden border-slate-200">
+                                        <Card key={idx} className="p-0 overflow-hidden border-slate-200 relative group">
+                                            {isEditing && (
+                                                <button 
+                                                    onClick={() => handleDeleteExercise(selectedTraining.id, idx)}
+                                                    className="absolute top-2 right-2 z-10 p-1.5 bg-white/80 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full shadow-sm transition"
+                                                    title="Usuń ćwiczenie"
+                                                >
+                                                    <Trash size={16} />
+                                                </button>
+                                            )}
                                             <div className="flex flex-col sm:flex-row">
                                                 <div className="h-24 sm:w-28 sm:h-auto bg-slate-200 shrink-0 relative">
                                                     <img src={def?.image} alt={def?.name} className="w-full h-full object-cover" />
                                                 </div>
                                                 <div className="p-4 flex-1">
                                                     <div className="hidden sm:flex justify-between items-start mb-2">
-                                                        <h4 className="font-bold text-slate-700">{def?.name}</h4>
-                                                        <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded text-slate-500">{def?.category}</span>
+                                                        {isEditing ? (
+                                                            <div className="w-full pr-8">
+                                                                <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Rodzaj ćwiczenia</span>
+                                                                <select 
+                                                                    value={ex.exerciseId}
+                                                                    onChange={(e) => handleUpdateExercise(selectedTraining.id, idx, 'exerciseId', e.target.value)}
+                                                                    className="w-full font-bold text-slate-700 bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none pb-1"
+                                                                >
+                                                                    {EXERCISE_LIBRARY.map(libEx => (
+                                                                        <option key={libEx.id} value={libEx.id}>{libEx.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <h4 className="font-bold text-slate-700">{def?.name}</h4>
+                                                                <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded text-slate-500">{def?.category}</span>
+                                                            </>
+                                                        )}
                                                     </div>
                                                     <div className="grid grid-cols-1 gap-3">
                                                         <div className="p-2 bg-slate-50 rounded border border-slate-100 text-sm">
@@ -322,6 +370,15 @@
                                         </Card>
                                     );
                                 })}
+
+                                {isEditing && (
+                                    <button 
+                                        onClick={() => handleAddExercise(selectedTraining.id)}
+                                        className="w-full py-4 border-2 border-dashed border-blue-200 rounded-xl text-blue-500 font-semibold flex items-center justify-center hover:bg-blue-50 hover:border-blue-300 transition group"
+                                    >
+                                        <Plus size={20} className="mr-2 group-hover:scale-110 transition-transform" /> Dodaj ćwiczenie
+                                    </button>
+                                )}
                             </div>
 
                             <div className="space-y-2">
