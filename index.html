@@ -15,9 +15,6 @@
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Recharts -->
-    <!-- <script src="https://unpkg.com/recharts/umd/Recharts.js"></script> -->
-
     <style>
         body { background-color: #f8fafc; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -52,6 +49,22 @@
         };
     </script>
 
+    <script type="module">
+        // Firebase Setup - Global Scope for React
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, query, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        window.auth = getAuth(app);
+        window.db = getFirestore(app);
+        window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
+        // Export Firestore functions to window for React to use
+        window.firestoreOps = { collection, doc, setDoc, onSnapshot, query, getDocs, writeBatch, signInAnonymously, signInWithCustomToken };
+    </script>
+
     <script type="text/babel">
         // Biblioteki
         if (!window.React || !window.ReactDOM) throw new Error("Brak Reacta. Sprawdź sieć.");
@@ -69,9 +82,7 @@
         const User = (p) => <IconBase {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
         const MapPin = (p) => <IconBase {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></IconBase>;
         const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></IconBase>;
-        const LinkIcon = (p) => <IconBase {...p}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></IconBase>;
         const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
-        const BrainCircuit = (p) => <IconBase {...p}><path d="M12 4.5a2.5 2.5 0 0 0-4.96-.46 2.5 2.5 0 0 0-1.98 3 2.5 2.5 0 0 0-1.32 3 2.5 2.5 0 0 0 .5 3.09 2.5 2.5 0 0 0 .76 3.01A2.5 2.5 0 0 0 12 19.5a2.5 2.5 0 0 0 4.5-1.36 2.5 2.5 0 0 0 .76-3.01 2.5 2.5 0 0 0 .5-3.09 2.5 2.5 0 0 0-1.32-3 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 12 4.5Z"/><path d="M12 10v4"/><path d="M8 8.5 12 13"/><path d="M16 8.5 12 13"/></IconBase>;
         const Dumbbell = (p) => <IconBase {...p}><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></IconBase>;
         const Trash = (p) => <IconBase {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></IconBase>;
         const ClipboardList = (p) => <IconBase {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
@@ -88,8 +99,8 @@
             { id: 'ex_bench_press', name: 'Wyciskanie na klatę', category: 'Siła' },
         ];
 
-        // ZMODYFIKOWANA STRUKTURA: description (opis zadania), series, reps, load
-        const INITIAL_TRAININGS = [
+        // DANE STARTOWE (Seeding) - Rozszerzone o przykłady z pliku
+        const INITIAL_SEED_DATA = [
             { 
                 id: 1, 
                 date: '2026-01-04', 
@@ -128,8 +139,30 @@
                     { exerciseId: 'ex_plank', description: 'Klasyk, pilnuj odcinka lędźwiowego', series: 5, reps: '45s', load: 'progresja', actual: '5x45s - ciężko' }
                 ] 
             },
+            {
+                id: 4,
+                date: '2026-01-13',
+                location: 'Groto Bulderownia Poznań',
+                weight: null,
+                feedback: '',
+                coachNotes: 'Akcent na dynamikę.',
+                exercises: [
+                    { exerciseId: 'ex_climb_endurance', description: 'Baldery po trudnych chwytach', series: 3, reps: '5', load: '6a+', actual: ''}
+                ]
+            },
+             {
+                id: 5,
+                date: '2026-01-15',
+                location: 'Karma Grunwald',
+                weight: null,
+                feedback: '',
+                coachNotes: 'Długie obwody, wytrzymałość siłowa.',
+                exercises: [
+                    { exerciseId: 'ex_climb_endurance', description: 'Obwód 40 ruchów', series: 2, reps: '1', load: 'średnia', actual: ''}
+                ]
+            },
             { 
-                id: 4, 
+                id: 6, 
                 date: '2026-02-03', 
                 location: 'Groto Bulderownia Poznań', 
                 weight: null, 
@@ -141,7 +174,7 @@
                 ] 
             },
             { 
-                id: 5, 
+                id: 7, 
                 date: '2026-02-05', 
                 location: 'Centrum Karma Dębiec', 
                 weight: null, 
@@ -151,29 +184,96 @@
                     { exerciseId: 'ex_pull_australian', description: 'Nogi na podwyższeniu dla utrudnienia', series: 4, reps: '8', load: '+5kg', actual: '' }, 
                     { exerciseId: 'ex_climb_endurance', description: 'Praca nad projektem, max 3 wstawki na bald', series: 3, reps: 'Projekt', load: '7a', actual: '' }
                 ] 
+            },
+             { 
+                id: 8, 
+                date: '2026-02-07', 
+                location: 'Blokline/Dębiec', 
+                weight: null, 
+                feedback: '', 
+                coachNotes: 'Luźne wspinanie objętościowe.', 
+                exercises: [
+                    { exerciseId: 'ex_climb_endurance', description: 'Dużo łatwych baldów', series: 1, reps: '20', load: 'łatwe', actual: '' }
+                ] 
             }
         ];
-
-        // --- KOMPONENTY ---
-
-        const Card = ({ children, className = "" }) => (
-            <div className={`bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden ${className}`}>{children}</div>
-        );
-
-        const Badge = ({ children, type = 'neutral' }) => {
-            const colors = { neutral: 'bg-slate-100 text-slate-600', success: 'bg-emerald-100 text-emerald-700', warning: 'bg-amber-100 text-amber-700' };
-            return <span className={`text-xs font-semibold px-2 py-1 rounded-full ${colors[type]}`}>{children}</span>;
-        };
 
         // --- APP ---
 
         function App() {
             const [activeTab, setActiveTab] = useState('trainings');
-            const [trainings, setTrainings] = useState(INITIAL_TRAININGS);
+            const [trainings, setTrainings] = useState([]); // Puste na start, ładowane z DB
             const [selectedTrainingId, setSelectedTrainingId] = useState(null);
             const [isEditing, setIsEditing] = useState(false);
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
 
-            // Pobieranie historii dla tabeli analityki
+            // --- FIREBASE LOGIC ---
+            useEffect(() => {
+                const initAuth = async () => {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await window.firestoreOps.signInWithCustomToken(window.auth, __initial_auth_token);
+                        } else {
+                            await window.firestoreOps.signInAnonymously(window.auth);
+                        }
+                    } catch (error) {
+                        console.error("Auth error", error);
+                    }
+                };
+
+                initAuth();
+
+                const unsubscribeAuth = window.auth.onAuthStateChanged(async (currentUser) => {
+                    setUser(currentUser);
+                    if (currentUser) {
+                        // Setup listener
+                        const trainingsRef = window.firestoreOps.collection(window.db, 'artifacts', window.appId, 'users', currentUser.uid, 'trainings');
+                        const q = window.firestoreOps.query(trainingsRef);
+
+                        // Check seed
+                        const snapshot = await window.firestoreOps.getDocs(q);
+                        if (snapshot.empty) {
+                            console.log("Seeding database...");
+                            const batch = window.firestoreOps.writeBatch(window.db);
+                            INITIAL_SEED_DATA.forEach(t => {
+                                const docRef = window.firestoreOps.doc(trainingsRef, t.id.toString());
+                                batch.set(docRef, t);
+                            });
+                            await batch.commit();
+                        }
+
+                        // Listen
+                        const unsubscribeSnapshot = window.firestoreOps.onSnapshot(q, (snap) => {
+                            const loaded = snap.docs.map(d => d.data());
+                            // Sort locally
+                            setTrainings(loaded.sort((a, b) => b.id - a.id));
+                            setLoading(false);
+                        }, (err) => console.error("Snapshot error", err));
+
+                        return () => unsubscribeSnapshot();
+                    } else {
+                        setLoading(false);
+                    }
+                });
+
+                return () => unsubscribeAuth();
+            }, []);
+
+            // Zapisz pojedynczy trening do bazy
+            const saveTrainingToDb = async (training) => {
+                if (!user) return;
+                try {
+                    const docRef = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'users', user.uid, 'trainings', training.id.toString());
+                    await window.firestoreOps.setDoc(docRef, training);
+                    console.log("Saved training", training.id);
+                } catch (e) {
+                    console.error("Error saving:", e);
+                    alert("Błąd zapisu! Sprawdź internet.");
+                }
+            };
+
+            // Analityka
             const getExerciseStats = (exerciseId) => {
                 return trainings
                     .filter(t => t.exercises.some(e => e.exerciseId === exerciseId))
@@ -190,13 +290,14 @@
                             isCompleted: !!t.weight
                         };
                     })
-                    .sort((a, b) => new Date(b.date) - new Date(a.date)); // Od najnowszych
+                    .sort((a, b) => new Date(b.date) - new Date(a.date));
             };
 
             const selectedTraining = trainings.find(t => t.id === selectedTrainingId);
 
             // Akcje
             const handleUpdateTraining = (trainingId, field, value) => {
+                // Update local state immediately for UI responsiveness
                 setTrainings(prev => prev.map(t => t.id === trainingId ? { ...t, [field]: value } : t));
             };
 
@@ -233,8 +334,17 @@
                 }));
             };
 
-            const handleAddTraining = () => {
-                const newId = Math.max(...trainings.map(t => t.id), 0) + 1;
+            // Toggle Edit/Save
+            const toggleEditMode = () => {
+                if (isEditing && selectedTraining) {
+                    // Jeśli wychodzimy z edycji (kliknięto Zapisz) -> Wyślij do bazy
+                    saveTrainingToDb(selectedTraining);
+                }
+                setIsEditing(!isEditing);
+            };
+
+            const handleAddTraining = async () => {
+                const newId = Date.now(); // Używamy timestamp jako ID dla unikalności
                 const today = new Date().toISOString().split('T')[0];
                 
                 const newTraining = {
@@ -249,9 +359,13 @@
                     ]
                 };
                 
+                // Optymistyczna aktualizacja UI
                 setTrainings(prev => [newTraining, ...prev]);
                 setSelectedTrainingId(newId);
                 setIsEditing(true);
+
+                // Zapisz od razu do bazy nowy pusty
+                await saveTrainingToDb(newTraining);
             };
 
             const generateCalendarLink = (training) => {
@@ -260,6 +374,8 @@
                 const dates = `${training.date.replace(/-/g, '')}T180000/${training.date.replace(/-/g, '')}T200000`;
                 return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&details=${details}&dates=${dates}`;
             };
+
+            if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400">Ładowanie bazy danych...</div>;
 
             // Widok Listy
             const TrainingListView = () => {
@@ -338,7 +454,7 @@
                         <div className="sticky top-0 bg-white/95 backdrop-blur-md z-10 border-b border-slate-100 p-4 flex items-center justify-between shadow-sm">
                             <button onClick={() => setSelectedTrainingId(null)} className="text-slate-500 hover:text-slate-800 flex items-center"><ChevronRight className="rotate-180 mr-1" size={20} /> Wróć</button>
                             <h2 className="font-bold text-slate-800">Szczegóły</h2>
-                            <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center text-sm font-medium px-4 py-1.5 rounded-full transition ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{isEditing ? <span>Zapisz</span> : 'Edytuj'}</button>
+                            <button onClick={toggleEditMode} className={`flex items-center text-sm font-medium px-4 py-1.5 rounded-full transition ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{isEditing ? <span>Zapisz</span> : 'Edytuj'}</button>
                         </div>
 
                         <div className="p-4 space-y-6">
