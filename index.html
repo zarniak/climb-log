@@ -95,16 +95,6 @@
         const Trash = (p) => <IconBase {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></IconBase>;
         const ClipboardList = (p) => <IconBase {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
 
-        // --- KOMPONENTY UI ---
-        const Card = ({ children, className = "" }) => (
-            <div className={`bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden ${className}`}>{children}</div>
-        );
-
-        const Badge = ({ children, type = 'neutral' }) => {
-            const colors = { neutral: 'bg-slate-100 text-slate-600', success: 'bg-emerald-100 text-emerald-700', warning: 'bg-amber-100 text-amber-700' };
-            return <span className={`text-xs font-semibold px-2 py-1 rounded-full ${colors[type]}`}>{children}</span>;
-        };
-
         const EXERCISE_LIBRARY = [
             { id: 'ex_pull_australian', name: 'Podciąganie Australijskie', category: 'Siła' },
             { id: 'ex_plank', name: 'Plank Klasyczny', category: 'Core' },
@@ -114,18 +104,12 @@
             { id: 'ex_bench_press', name: 'Wyciskanie na klatę', category: 'Siła' },
         ];
 
-        const generateCalendarLink = (training) => {
-            const text = encodeURIComponent(`Trening Wspinaczkowy @ ${training.location}`);
-            const details = encodeURIComponent(`Plan: ${training.coachNotes}`);
-            const dates = `${training.date.replace(/-/g, '')}T180000/${training.date.replace(/-/g, '')}T200000`;
-            return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&details=${details}&dates=${dates}`;
-        };
-
         // --- WIDOKI ---
 
         const TrainingListView = ({ trainings, onSelect, onAdd }) => {
             const [viewMode, setViewMode] = useState('planned');
-            const filtered = trainings.filter(t => (t.isCompleted || !!t.weight) === (viewMode === 'completed'));
+            // Zmieniono logikę: patrzymy tylko na t.isCompleted
+            const filtered = trainings.filter(t => !!t.isCompleted === (viewMode === 'completed'));
             const sorted = [...filtered].sort((a, b) => viewMode === 'planned' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date));
 
             return (
@@ -146,10 +130,10 @@
                                 <div className="p-4 cursor-pointer" onClick={() => onSelect(t.id)}>
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <div className={`text-sm font-semibold uppercase ${t.isCompleted || !!t.weight ? 'text-emerald-600' : 'text-blue-600'}`}>{new Date(t.date).toLocaleDateString('pl-PL', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
+                                            <div className={`text-sm font-semibold uppercase ${t.isCompleted ? 'text-emerald-600' : 'text-blue-600'}`}>{new Date(t.date).toLocaleDateString('pl-PL', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
                                             <div className="flex items-center text-slate-600 mt-1"><MapPin size={14} className="mr-1" /><span className="text-sm">{t.location || 'Brak lokalizacji'}</span></div>
                                         </div>
-                                        {t.isCompleted || !!t.weight ? <Badge type="success">Ukończony</Badge> : <Badge type="warning">Zaplanowany</Badge>}
+                                        {t.isCompleted ? <Badge type="success">Ukończony</Badge> : <Badge type="warning">Zaplanowany</Badge>}
                                     </div>
                                     <div className="mt-3 space-y-1">
                                         {t.exercises.slice(0, 2).map((ex, idx) => (
@@ -158,7 +142,6 @@
                                                 <span className="text-xs font-mono text-slate-400">{ex.series}x{ex.reps}</span>
                                             </div>
                                         ))}
-                                        {t.exercises.length > 2 && <div className="text-xs text-slate-400 pl-4">+ {t.exercises.length - 2} więcej</div>}
                                     </div>
                                 </div>
                             </Card>
@@ -170,7 +153,8 @@
 
         const TrainingDetailView = ({ training, isEditing, onToggleEdit, onClose, onUpdateTraining, onUpdateExercise, onAddExercise, onDeleteExercise, onDeleteTraining }) => {
             if (!training) return null;
-            const isCompleted = training.isCompleted || !!training.weight;
+            // Wyłącznie pole boolean decyduje o statusie
+            const isCompleted = !!training.isCompleted;
 
             return (
                 <div className="pb-24 animate-fade-in">
@@ -199,7 +183,6 @@
                                         {isEditing ? <input value={training.location} onChange={(e) => onUpdateTraining(training.id, 'location', e.target.value)} className="bg-white/10 border-none rounded p-1 text-white text-sm w-full outline-none" placeholder="Lokalizacja..." /> : <span>{training.location || 'Brak lokalizacji'}</span>}
                                     </div>
                                 </div>
-                                {!isEditing && <a href={generateCalendarLink(training)} target="_blank" className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition"><CalendarPlus size={20} /></a>}
                             </div>
                             <div className="mt-6 pt-4 border-t border-white/10 flex gap-4 text-sm">
                                 <div className="flex-1">
@@ -210,8 +193,8 @@
                                     <label className="text-slate-300 block mb-1">Status</label>
                                     {isEditing ? (
                                         <select value={isCompleted ? 'true' : 'false'} onChange={(e) => onUpdateTraining(training.id, 'isCompleted', e.target.value === 'true')} className="w-full bg-black/20 text-white rounded px-2 py-1 border border-white/10 outline-none">
-                                            <option value="false" className="text-slate-800">Zaplanowany</option>
-                                            <option value="true" className="text-slate-800">Ukończony</option>
+                                            <option value="false" className="text-slate-100">Zaplanowany</option>
+                                            <option value="true" className="text-slate-100">Ukończony</option>
                                         </select>
                                     ) : <div className="flex items-center">{isCompleted ? 'Ukończony' : 'Do zrobienia'}</div>}
                                 </div>
@@ -228,8 +211,9 @@
                             <h3 className="font-bold text-slate-800 text-lg flex items-center"><Dumbbell className="mr-2 text-slate-400" size={20} /> Plan Treningowy</h3>
                             {training.exercises.map((ex, idx) => (
                                 <Card key={idx} className="p-4 relative">
-                                    {isEditing && <button onClick={() => onDeleteExercise(training.id, idx)} className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500"><Trash size={16} /></button>}
-                                    <div className="mb-2">
+                                    {isEditing && <button onClick={() => onDeleteExercise(training.id, idx)} className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 z-20"><Trash size={16} /></button>}
+                                    {/* Dodano pr-10 aby ikona śmietnika nie nachodziła na tekst */}
+                                    <div className={`mb-2 ${isEditing ? 'pr-10' : ''}`}>
                                         {isEditing ? (
                                             <select value={ex.exerciseId} onChange={(e) => onUpdateExercise(training.id, idx, 'exerciseId', e.target.value)} className="w-full font-bold text-slate-700 bg-transparent border-b border-slate-300 outline-none pb-1">
                                                 {EXERCISE_LIBRARY.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
@@ -255,10 +239,6 @@
                             ))}
                             {isEditing && <button onClick={() => onAddExercise(training.id)} className="w-full py-3 border-2 border-dashed border-blue-200 rounded-xl text-blue-500 font-semibold flex items-center justify-center hover:bg-blue-50 transition"><Plus size={20} className="mr-2" /> Dodaj ćwiczenie</button>}
                         </div>
-                        <div className="space-y-2">
-                            <h3 className="font-bold text-slate-800 text-lg flex items-center"><MessageSquare size={20} className="mr-2 text-slate-400" /> Odczucia</h3>
-                            {isEditing ? <textarea value={training.feedback || ''} onChange={(e) => onUpdateTraining(training.id, 'feedback', e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 outline-none text-sm min-h-[100px]" placeholder="Jak poszło?" /> : <div className="p-4 bg-slate-50 rounded-xl border text-sm italic">{training.feedback || 'Brak feedbacku.'}</div>}
-                        </div>
                     </div>
                 </div>
             );
@@ -279,20 +259,17 @@
                         const ex = t.exercises.find(e => e.exerciseId === statExId);
                         return (
                             <Card key={t.id} className="p-3 border-l-4 border-l-blue-500">
-                                <div className="flex justify-between text-xs font-bold text-slate-500 mb-2"><span>{new Date(t.date).toLocaleDateString('pl-PL')}</span>{t.isCompleted || !!t.weight ? <span className="text-emerald-600">Zrealizowane</span> : <span className="text-amber-600">Plan</span>}</div>
+                                <div className="flex justify-between text-xs font-bold text-slate-500 mb-2"><span>{new Date(t.date).toLocaleDateString('pl-PL')}</span>{t.isCompleted ? <span className="text-emerald-600">Zrealizowane</span> : <span className="text-amber-600">Plan</span>}</div>
                                 <div className="flex items-baseline gap-2">
                                     <div className="text-lg font-bold text-slate-800">{ex.series} x {ex.reps}</div>
                                     <div className="ml-auto bg-slate-100 px-2 py-1 rounded text-sm font-mono">{ex.load}</div>
                                 </div>
-                                {ex.actual && <div className="text-xs text-slate-600 italic mt-2 bg-slate-50 p-2 rounded">"{ex.actual}"</div>}
                             </Card>
                         );
                     })}
                 </div>
             );
         };
-
-        // --- GŁÓWNA APLIKACJA ---
 
         function App() {
             const [activeTab, setActiveTab] = useState('trainings');
@@ -309,7 +286,7 @@
                     let attempts = 0;
                     while (!window.firestoreOps && attempts < 20) { await new Promise(r => setTimeout(r, 100)); attempts++; }
                     if (!window.firestoreOps) { setLoading(false); return; }
-                    const { signInAnonymously, signInWithCustomToken, collection, query, onSnapshot, getDocs, doc, setDoc } = window.firestoreOps;
+                    const { signInAnonymously, signInWithCustomToken, collection, query, onSnapshot, doc, setDoc } = window.firestoreOps;
                     try {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(window.auth, __initial_auth_token);
                         else await signInAnonymously(window.auth);
@@ -329,7 +306,6 @@
                 return () => { if (unsubS) unsubS(); if (unsubA) unsubA(); };
             }, []);
 
-            // FUNKCJA ZAPISU (Debounced)
             const saveToDb = (training) => {
                 if (!user || !window.firestoreOps) return;
                 if (saveTimeout.current) clearTimeout(saveTimeout.current);
@@ -337,9 +313,9 @@
                     try {
                         const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', training.id.toString());
                         await window.firestoreOps.setDoc(ref, training);
-                        console.log("Auto-saved:", training.id);
+                        console.log("Saved:", training.id);
                     } catch (e) { console.error("Save error:", e); }
-                }, 800);
+                }, 400); // Skrócono czas debouncingu
             };
 
             const handleUpdateT = (id, field, value) => {
@@ -394,16 +370,19 @@
 
             const handleAddT = async () => {
                 const newT = { id: Date.now(), date: new Date().toISOString().split('T')[0], location: '', weight: null, isCompleted: false, feedback: '', coachNotes: '', exercises: [{ exerciseId: EXERCISE_LIBRARY[4].id, description: '', series: 3, reps: '1', load: '6a', actual: '' }] };
-                setTrainings(p => [newT, ...p]);
-                setSelectedId(newT.id);
-                setIsEditing(true);
+                
+                // Najpierw zapis do bazy, potem aktualizacja lokalna, by uniknąć nadpisania przez snapshot
                 if (user && window.firestoreOps) {
                     const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', newT.id.toString());
                     await window.firestoreOps.setDoc(ref, newT);
                 }
+                
+                setTrainings(p => [newT, ...p]);
+                setSelectedId(newT.id);
+                setIsEditing(true);
             };
 
-            if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-medium animate-pulse">Synchronizacja...</div>;
+            if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-medium animate-pulse">Łączenie...</div>;
 
             const selected = trainings.find(t => t.id === selectedId);
 
@@ -412,7 +391,10 @@
                     {selected ? (
                         <TrainingDetailView 
                             training={selected} isEditing={isEditing} 
-                            onToggleEdit={() => setIsEditing(!isEditing)} 
+                            onToggleEdit={() => {
+                                if (isEditing) saveToDb(selected); // Dodatkowy zapis przy wyłączaniu edycji
+                                setIsEditing(!isEditing);
+                            }} 
                             onClose={() => { setSelectedId(null); setIsEditing(false); }}
                             onUpdateTraining={handleUpdateT} onUpdateExercise={handleUpdateE}
                             onAddExercise={handleAddE} onDeleteExercise={handleDeleteE} onDeleteTraining={handleDeleteT}
