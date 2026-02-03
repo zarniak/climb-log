@@ -35,12 +35,15 @@
     <!-- Error Handler -->
     <script>
         window.onerror = function(message, source, lineno, colno, error) {
+            // Ignoruj błędy resize observera (częste w Canvas/iframe)
+            if (message.includes('ResizeObserver')) return;
+
             const errorContainer = document.createElement('div');
             errorContainer.innerHTML = `
                 <div style="position: fixed; top: 20px; left: 20px; right: 20px; z-index: 9999; padding: 20px; font-family: sans-serif; color: #7f1d1d; background: #fef2f2; border: 2px solid #ef4444; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    <h3 style="margin-top:0; font-weight: bold;">⚠️ Błąd uruchomienia aplikacji</h3>
-                    <p>Sprawdź połączenie z internetem.</p>
-                    <div style="font-size: 12px; background: rgba(255,255,255,0.7); padding: 10px; border-radius: 4px;">
+                    <h3 style="margin-top:0; font-weight: bold;">⚠️ Błąd aplikacji</h3>
+                    <p>Wystąpił problem techniczny.</p>
+                    <div style="font-size: 12px; background: rgba(255,255,255,0.7); padding: 10px; border-radius: 4px; overflow: auto; max-height: 100px;">
                         ${message}
                     </div>
                 </div>
@@ -55,14 +58,27 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, query, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        window.auth = getAuth(app);
-        window.db = getFirestore(app);
-        window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        
-        // Export Firestore functions to window for React to use
-        window.firestoreOps = { collection, doc, setDoc, onSnapshot, query, getDocs, writeBatch, signInAnonymously, signInWithCustomToken };
+        try {
+            // Bezpieczne sprawdzanie zmiennych środowiskowych
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+            if (firebaseConfig) {
+                const app = initializeApp(firebaseConfig);
+                window.auth = getAuth(app);
+                window.db = getFirestore(app);
+                window.appId = appId;
+                // Eksport funkcji do window
+                window.firestoreOps = { collection, doc, setDoc, onSnapshot, query, getDocs, writeBatch, signInAnonymously, signInWithCustomToken };
+                console.log("Firebase initialized successfully.");
+            } else {
+                console.warn("Brak konfiguracji Firebase (__firebase_config). Aplikacja działa w trybie offline.");
+                window.isOffline = true;
+            }
+        } catch (e) {
+            console.error("Firebase init error:", e);
+            window.isOffline = true;
+        }
     </script>
 
     <script type="text/babel">
@@ -215,8 +231,18 @@
 
                 const initFirebase = async () => {
                     // Oczekiwanie na załadowanie bibliotek Firebase (rozwiązuje race condition)
-                    while (!window.auth || !window.db || !window.firestoreOps) {
-                        await new Promise(resolve => setTimeout(resolve, 50));
+                    // Czekamy max 2 sekundy, potem fallback do offline
+                    let attempts = 0;
+                    while ((!window.firestoreOps || !window.auth) && attempts < 20) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        attempts++;
+                    }
+
+                    if (!window.firestoreOps || !window.auth) {
+                        console.log("Firebase nie został załadowany (Offline mode). Używam danych lokalnych.");
+                        setTrainings(INITIAL_SEED_DATA.sort((a, b) => b.id - a.id));
+                        setLoading(false);
+                        return;
                     }
 
                     const { signInWithCustomToken, signInAnonymously, collection, query, getDocs, writeBatch, doc, setDoc, onSnapshot } = window.firestoreOps;
@@ -229,6 +255,10 @@
                         }
                     } catch (error) {
                         console.error("Auth error", error);
+                        // Fallback w przypadku błędu autoryzacji
+                        setTrainings(INITIAL_SEED_DATA.sort((a, b) => b.id - a.id));
+                        setLoading(false);
+                        return;
                     }
 
                     unsubscribeAuth = window.auth.onAuthStateChanged(async (currentUser) => {
@@ -239,15 +269,19 @@
                             const q = query(trainingsRef);
 
                             // Check seed
-                            const snapshot = await getDocs(q);
-                            if (snapshot.empty) {
-                                console.log("Seeding database...");
-                                const batch = writeBatch(window.db);
-                                INITIAL_SEED_DATA.forEach(t => {
-                                    const docRef = doc(trainingsRef, t.id.toString());
-                                    batch.set(docRef, t);
-                                });
-                                await batch.commit();
+                            try {
+                                const snapshot = await getDocs(q);
+                                if (snapshot.empty) {
+                                    console.log("Seeding database...");
+                                    const batch = writeBatch(window.db);
+                                    INITIAL_SEED_DATA.forEach(t => {
+                                        const docRef = doc(trainingsRef, t.id.toString());
+                                        batch.set(docRef, t);
+                                    });
+                                    await batch.commit();
+                                }
+                            } catch (e) {
+                                console.error("Error seeding/fetching initial data", e);
                             }
 
                             // Listen
@@ -256,7 +290,10 @@
                                 // Sort locally
                                 setTrainings(loaded.sort((a, b) => b.id - a.id));
                                 setLoading(false);
-                            }, (err) => console.error("Snapshot error", err));
+                            }, (err) => {
+                                console.error("Snapshot error", err);
+                                setLoading(false);
+                            });
                         } else {
                             setLoading(false);
                         }
@@ -273,14 +310,19 @@
 
             // Zapisz pojedynczy trening do bazy
             const saveTrainingToDb = async (training) => {
-                if (!user) return;
+                // Jeśli jesteśmy offline (brak auth), po prostu aktualizujemy stan lokalny (już zrobione w handleUpdate)
+                if (!user || !window.firestoreOps) {
+                    console.log("Zapis w trybie offline (tylko lokalnie)");
+                    return;
+                }
+                
                 try {
                     const docRef = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'users', user.uid, 'trainings', training.id.toString());
                     await window.firestoreOps.setDoc(docRef, training);
                     console.log("Saved training", training.id);
                 } catch (e) {
                     console.error("Error saving:", e);
-                    alert("Błąd zapisu! Sprawdź internet.");
+                    // Nie alertuj uciążliwie
                 }
             };
 
