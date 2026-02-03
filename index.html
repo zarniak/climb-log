@@ -90,12 +90,12 @@
         // --- DANE ---
 
         const EXERCISE_LIBRARY = [
-            { id: 'ex_pull_australian', name: 'Podciąganie Australijskie', category: 'Siła', image: 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?auto=format&fit=crop&q=80&w=100' },
-            { id: 'ex_plank', name: 'Plank Klasyczny', category: 'Core', image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&q=80&w=100' },
-            { id: 'ex_hangboard_90', name: 'Zwis 90 stopni', category: 'Siła Palców', image: 'https://images.unsplash.com/photo-1564769662533-4f00a87b4056?auto=format&fit=crop&q=80&w=100' },
-            { id: 'ex_leg_raise', name: 'Wymachy nóg w przybloku', category: 'Core', image: 'https://images.unsplash.com/photo-1517963879466-e925ac69aa18?auto=format&fit=crop&q=80&w=100' },
-            { id: 'ex_climb_endurance', name: 'Obwody / Wytrzymałość', category: 'Wspinanie', image: 'https://images.unsplash.com/photo-1601924582970-9238bcb495d9?auto=format&fit=crop&q=80&w=100' },
-            { id: 'ex_bench_press', name: 'Wyciskanie na klatę', category: 'Siła', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&q=80&w=100' },
+            { id: 'ex_pull_australian', name: 'Podciąganie Australijskie', category: 'Siła' },
+            { id: 'ex_plank', name: 'Plank Klasyczny', category: 'Core' },
+            { id: 'ex_hangboard_90', name: 'Zwis 90 stopni', category: 'Siła Palców' },
+            { id: 'ex_leg_raise', name: 'Wymachy nóg w przybloku', category: 'Core' },
+            { id: 'ex_climb_endurance', name: 'Obwody / Wytrzymałość', category: 'Wspinanie' },
+            { id: 'ex_bench_press', name: 'Wyciskanie na klatę', category: 'Siła' },
         ];
 
         const INITIAL_TRAININGS = [
@@ -329,41 +329,36 @@
                                                     <Trash size={16} />
                                                 </button>
                                             )}
-                                            <div className="flex flex-col sm:flex-row">
-                                                <div className="h-24 sm:w-28 sm:h-auto bg-slate-200 shrink-0 relative">
-                                                    <img src={def?.image} alt={def?.name} className="w-full h-full object-cover" />
+                                            <div className="p-4">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    {isEditing ? (
+                                                        <div className="w-full pr-8">
+                                                            <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Rodzaj ćwiczenia</span>
+                                                            <select 
+                                                                value={ex.exerciseId}
+                                                                onChange={(e) => handleUpdateExercise(selectedTraining.id, idx, 'exerciseId', e.target.value)}
+                                                                className="w-full font-bold text-slate-700 bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none pb-1"
+                                                            >
+                                                                {EXERCISE_LIBRARY.map(libEx => (
+                                                                    <option key={libEx.id} value={libEx.id}>{libEx.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <h4 className="font-bold text-slate-700">{def?.name}</h4>
+                                                            <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded text-slate-500">{def?.category}</span>
+                                                        </>
+                                                    )}
                                                 </div>
-                                                <div className="p-4 flex-1">
-                                                    <div className="hidden sm:flex justify-between items-start mb-2">
-                                                        {isEditing ? (
-                                                            <div className="w-full pr-8">
-                                                                <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Rodzaj ćwiczenia</span>
-                                                                <select 
-                                                                    value={ex.exerciseId}
-                                                                    onChange={(e) => handleUpdateExercise(selectedTraining.id, idx, 'exerciseId', e.target.value)}
-                                                                    className="w-full font-bold text-slate-700 bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none pb-1"
-                                                                >
-                                                                    {EXERCISE_LIBRARY.map(libEx => (
-                                                                        <option key={libEx.id} value={libEx.id}>{libEx.name}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                        ) : (
-                                                            <>
-                                                                <h4 className="font-bold text-slate-700">{def?.name}</h4>
-                                                                <span className="text-xs font-semibold bg-slate-100 px-2 py-1 rounded text-slate-500">{def?.category}</span>
-                                                            </>
-                                                        )}
+                                                <div className="grid grid-cols-1 gap-3">
+                                                    <div className="p-2 bg-slate-50 rounded border border-slate-100 text-sm">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Zadanie</span>
+                                                        {isEditing ? <input value={ex.plan} onChange={(e) => handleUpdateExercise(selectedTraining.id, idx, 'plan', e.target.value)} className="w-full bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none" /> : <div className="text-slate-700 font-medium">{ex.plan}</div>}
                                                     </div>
-                                                    <div className="grid grid-cols-1 gap-3">
-                                                        <div className="p-2 bg-slate-50 rounded border border-slate-100 text-sm">
-                                                            <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Zadanie</span>
-                                                            {isEditing ? <input value={ex.plan} onChange={(e) => handleUpdateExercise(selectedTraining.id, idx, 'plan', e.target.value)} className="w-full bg-transparent border-b border-slate-300 focus:border-blue-500 outline-none" /> : <div className="text-slate-700 font-medium">{ex.plan}</div>}
-                                                        </div>
-                                                        <div>
-                                                            <span className="text-[10px] font-bold text-blue-500 uppercase block mb-1">Twój Wynik</span>
-                                                            {isEditing ? <input className="w-full text-sm p-2 border border-blue-200 rounded bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="Wpisz wynik..." value={ex.actual || ''} onChange={(e) => handleUpdateExercise(selectedTraining.id, idx, 'actual', e.target.value)} /> : <div className={`text-sm border-l-2 pl-2 ${ex.actual ? 'border-emerald-500 text-slate-800' : 'border-slate-200 text-slate-400 italic'}`}>{ex.actual || 'Brak wpisu'}</div>}
-                                                        </div>
+                                                    <div>
+                                                        <span className="text-[10px] font-bold text-blue-500 uppercase block mb-1">Twój Wynik</span>
+                                                        {isEditing ? <input className="w-full text-sm p-2 border border-blue-200 rounded bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" placeholder="Wpisz wynik..." value={ex.actual || ''} onChange={(e) => handleUpdateExercise(selectedTraining.id, idx, 'actual', e.target.value)} /> : <div className={`text-sm border-l-2 pl-2 ${ex.actual ? 'border-emerald-500 text-slate-800' : 'border-slate-200 text-slate-400 italic'}`}>{ex.actual || 'Brak wpisu'}</div>}
                                                     </div>
                                                 </div>
                                             </div>
