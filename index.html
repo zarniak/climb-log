@@ -15,7 +15,7 @@
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Recharts (Usunięte z logiki, ale zostawiam bibliotekę w razie powrotu do wykresów w przyszłości) -->
+    <!-- Recharts -->
     <!-- <script src="https://unpkg.com/recharts/umd/Recharts.js"></script> -->
 
     <style>
@@ -88,7 +88,7 @@
             { id: 'ex_bench_press', name: 'Wyciskanie na klatę', category: 'Siła' },
         ];
 
-        // ZMODYFIKOWANA STRUKTURA: series (serie), reps (powtórzenia), load (trudność)
+        // ZMODYFIKOWANA STRUKTURA: description (opis zadania), series, reps, load
         const INITIAL_TRAININGS = [
             { 
                 id: 1, 
@@ -98,9 +98,9 @@
                 feedback: 'Czułem moc, ale plank mnie zniszczył.', 
                 coachNotes: 'Pamiętaj o prostych plecach przy australijskich.', 
                 exercises: [
-                    { exerciseId: 'ex_pull_australian', series: 3, reps: '5', load: 'masy ciała', actual: 'Zrobione 3x5, zapas był' }, 
-                    { exerciseId: 'ex_plank', series: 5, reps: '40s', load: '-', actual: '4x40s, piąta seria tylko 20s' }, 
-                    { exerciseId: 'ex_climb_endurance', series: 1, reps: '38 ruchów', load: 'Zielona', actual: 'Doszedłem do 22, potem 27' }
+                    { exerciseId: 'ex_pull_australian', description: 'Dynamiczny ruch w górę, powolne opuszczanie (3s)', series: 3, reps: '5', load: 'masy ciała', actual: 'Zrobione 3x5, zapas był' }, 
+                    { exerciseId: 'ex_plank', description: 'Trzymaj napięty brzuch, nie opuszczaj bioder', series: 5, reps: '40s', load: '-', actual: '4x40s, piąta seria tylko 20s' }, 
+                    { exerciseId: 'ex_climb_endurance', description: 'Wybierz zielone baldy, staraj się nie poprawiać chwytów', series: 1, reps: '38 ruchów', load: 'Zielona', actual: 'Doszedłem do 22, potem 27' }
                 ] 
             },
             { 
@@ -111,9 +111,9 @@
                 feedback: 'Dzień konia! Czarna 6c weszła gładko.', 
                 coachNotes: 'Skup się na pracy nóg na pionach.', 
                 exercises: [
-                    { exerciseId: 'ex_hangboard_90', series: 1, reps: 'Max', load: 'Bez wagi', actual: '20 sekund' }, 
-                    { exerciseId: 'ex_climb_endurance', series: 1, reps: '1', load: 'Czarna 6c', actual: 'Zrobiona w 2:58' }, 
-                    { exerciseId: 'ex_bench_press', series: 1, reps: 'Max', load: '60kg', actual: '60kg x 3 powtórzenia' }
+                    { exerciseId: 'ex_hangboard_90', description: 'Chwyt otwarty, łokcie lekko zgięte', series: 1, reps: 'Max', load: 'Bez wagi', actual: '20 sekund' }, 
+                    { exerciseId: 'ex_climb_endurance', description: 'Wspinanie ciągłe, odpoczywaj na klamach', series: 1, reps: '1', load: 'Czarna 6c', actual: 'Zrobiona w 2:58' }, 
+                    { exerciseId: 'ex_bench_press', description: 'Pełen zakres ruchu, dotknij klatki', series: 1, reps: 'Max', load: '60kg', actual: '60kg x 3 powtórzenia' }
                 ] 
             },
             { 
@@ -124,8 +124,8 @@
                 feedback: 'Lekkie zmęczenie po pracy.', 
                 coachNotes: 'Lekki trening, regeneracja przed zawodami.', 
                 exercises: [
-                    { exerciseId: 'ex_leg_raise', series: 2, reps: '5', load: '-', actual: '2x5 zrobione czysto' }, 
-                    { exerciseId: 'ex_plank', series: 5, reps: '45s', load: 'progresja', actual: '5x45s - ciężko' }
+                    { exerciseId: 'ex_leg_raise', description: 'Nogi proste w kolanach, palce obciągnięte', series: 2, reps: '5', load: '-', actual: '2x5 zrobione czysto' }, 
+                    { exerciseId: 'ex_plank', description: 'Klasyk, pilnuj odcinka lędźwiowego', series: 5, reps: '45s', load: 'progresja', actual: '5x45s - ciężko' }
                 ] 
             },
             { 
@@ -136,8 +136,8 @@
                 feedback: '', 
                 coachNotes: 'Interwały 4x4 na poziomie 6b+.', 
                 exercises: [
-                    { exerciseId: 'ex_climb_endurance', series: 4, reps: '4', load: '6b+', actual: '' }, 
-                    { exerciseId: 'ex_hangboard_90', series: 5, reps: '10s', load: '20mm', actual: '' }
+                    { exerciseId: 'ex_climb_endurance', description: 'Wybierz 4 baldy, rób jeden po drugim bez odpoczynku', series: 4, reps: '4', load: '6b+', actual: '' }, 
+                    { exerciseId: 'ex_hangboard_90', description: 'Zwis na małej krawądce', series: 5, reps: '10s', load: '20mm', actual: '' }
                 ] 
             },
             { 
@@ -148,8 +148,8 @@
                 feedback: '', 
                 coachNotes: 'Technika haczenia pięty.', 
                 exercises: [
-                    { exerciseId: 'ex_pull_australian', series: 4, reps: '8', load: '+5kg', actual: '' }, 
-                    { exerciseId: 'ex_climb_endurance', series: 3, reps: 'Projekt', load: '7a', actual: '' }
+                    { exerciseId: 'ex_pull_australian', description: 'Nogi na podwyższeniu dla utrudnienia', series: 4, reps: '8', load: '+5kg', actual: '' }, 
+                    { exerciseId: 'ex_climb_endurance', description: 'Praca nad projektem, max 3 wstawki na bald', series: 3, reps: 'Projekt', load: '7a', actual: '' }
                 ] 
             }
         ];
@@ -214,6 +214,7 @@
                     if (t.id !== trainingId) return t;
                     const newEx = {
                         exerciseId: EXERCISE_LIBRARY[0].id,
+                        description: '',
                         series: 3,
                         reps: '10',
                         load: '-',
@@ -244,7 +245,7 @@
                     feedback: '',
                     coachNotes: 'Wpisz cele treningowe...',
                     exercises: [
-                        { exerciseId: 'ex_climb_endurance', series: 4, reps: '10', load: '6a', actual: '' }
+                        { exerciseId: 'ex_climb_endurance', description: 'Opis zadania...', series: 4, reps: '10', load: '6a', actual: '' }
                     ]
                 };
                 
@@ -307,7 +308,6 @@
                                                             <div className={`w-1.5 h-1.5 rounded-full mr-2 ${training.weight ? 'bg-emerald-300' : 'bg-slate-300'}`}></div>
                                                             {def?.name}
                                                         </div>
-                                                        {/* Preview parametrów */}
                                                         <span className="text-xs font-mono text-slate-400 ml-2">{ex.series}x{ex.reps} | {ex.load}</span>
                                                     </div>
                                                 );
@@ -404,7 +404,24 @@
                                                     )}
                                                 </div>
 
-                                                {/* GRID PARAMETRÓW: SERIE | POWTÓRZENIA | TRUDNOŚĆ */}
+                                                {/* OPIS ZADANIA */}
+                                                <div className="mb-3">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Instrukcja / Opis</span>
+                                                    {isEditing ? (
+                                                        <textarea 
+                                                            value={ex.description || ''} 
+                                                            onChange={(e) => handleUpdateExercise(selectedTraining.id, idx, 'description', e.target.value)} 
+                                                            className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm min-h-[50px] focus:border-blue-500 outline-none" 
+                                                            placeholder="Opisz jak wykonać ćwiczenie..."
+                                                        />
+                                                    ) : (
+                                                        <div className="text-sm text-slate-700 bg-slate-50 border border-slate-100 rounded p-2 italic">
+                                                            {ex.description || "Brak dodatkowego opisu."}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* GRID PARAMETRÓW */}
                                                 <div className="grid grid-cols-3 gap-2 mb-3">
                                                     <div>
                                                         <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Serie</span>
