@@ -73,12 +73,12 @@
             // KONFIGURACJA UŻYTKOWNIKA
             // ------------------------------------------------------------------
             const userConfig = {
-              apiKey: "AIzaSyAgIGDQaKWHcBiEUwVavMOpj5TX5n81Bnw",
-              authDomain: "climblog-7432b.firebaseapp.com",
-              projectId: "climblog-7432b",
-              storageBucket: "climblog-7432b.firebasestorage.app",
-              messagingSenderId: "155094312417",
-              appId: "1:155094312417:web:19e35e3699737be22cdea0"
+                  apiKey: "AIzaSyAgIGDQaKWHcBiEUwVavMOpj5TX5n81Bnw",
+                  authDomain: "climblog-7432b.firebaseapp.com",
+                  projectId: "climblog-7432b",
+                  storageBucket: "climblog-7432b.firebasestorage.app",
+                  messagingSenderId: "155094312417",
+                  appId: "1:155094312417:web:19e35e3699737be22cdea0"
             }; 
 
             const firebaseConfig = (userConfig.apiKey !== "TU_WKLEJ_API_KEY") ? userConfig : (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null);
@@ -213,7 +213,10 @@
                                         {t.exercises && t.exercises.slice(0, 2).map((ex, idx) => (
                                             <div key={idx} className="text-xs text-gray-500 flex justify-between items-center">
                                                 <span>{exerciseLibrary.find(e => e.id === ex.exerciseId)?.name || 'Ćwiczenie'}</span>
-                                                <span className="font-bold text-gray-400">{ex.series}x{ex.reps}</span>
+                                                <div className="text-right">
+                                                    <span className="font-bold text-gray-400">{ex.series}x{ex.reps}</span>
+                                                    {ex.load && <span className="text-gray-300 font-normal ml-1">({ex.load})</span>}
+                                                </div>
                                             </div>
                                         ))}
                                         {t.exercises && t.exercises.length > 2 && <div className="text-[10px] text-gray-400 pt-1">+ {t.exercises.length - 2} więcej</div>}
@@ -272,11 +275,21 @@
                             
                             <div className="flex items-center mt-2 text-gray-500 text-sm">
                                 <MapPin size={14} className="mr-1.5 text-blue-500" />
-                                {isEditing ? <input value={training.location} onChange={(e) => onUpdateTraining(training.id, 'location', e.target.value)} className="clean-input w-full text-sm" placeholder="Gdzie się wspinasz?" /> : <span>{training.location || 'Dodaj lokalizację'}</span>}
+                                {isEditing ? (
+                                    <input value={training.location} onChange={(e) => onUpdateTraining(training.id, 'location', e.target.value)} className="clean-input w-full text-sm" placeholder="Gdzie się wspinasz?" />
+                                ) : (
+                                    training.location ? (
+                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(training.location)}`} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-600">
+                                            {training.location}
+                                        </a>
+                                    ) : (
+                                        <span>Dodaj lokalizację</span>
+                                    )
+                                )}
                             </div>
                         </div>
 
-                        {/* Status Switcher (Now Single Clickable Button) */}
+                        {/* Status Switcher (Single Clickable Button) */}
                         <button
                             onClick={() => onUpdateTraining(training.id, 'isCompleted', !isCompleted)}
                             className={`w-full py-2 rounded-xl font-bold uppercase tracking-wide flex items-center justify-center transition border ${
@@ -363,13 +376,19 @@
                             {isEditing && <button onClick={() => onAddExercise(training.id)} className="w-full py-3 border border-dashed border-blue-200 rounded-xl text-blue-500 text-sm font-semibold flex items-center justify-center hover:bg-blue-50 transition"><Plus size={18} className="mr-2" /> Dodaj ćwiczenie</button>}
                         </div>
 
-                        {/* General Feedback / Summary */}
+                        {/* General Feedback / Summary (Always Editable) */}
                         <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 mt-4">
                             <div className="flex items-start gap-2">
                                 <MessageSquare size={16} className="text-blue-600 mt-0.5 shrink-0" />
                                 <div className="w-full">
                                     <span className="text-[10px] font-bold text-blue-600 uppercase mb-1 block">Podsumowanie treningu</span>
-                                    {isEditing ? <textarea value={training.feedback || ''} onChange={(e) => onUpdateTraining(training.id, 'feedback', e.target.value)} className="w-full bg-white/50 border border-blue-200/50 rounded p-2 text-xs outline-none" rows="2" placeholder="Jak poszło?" /> : <p className="text-xs text-gray-700 leading-relaxed">{training.feedback || 'Brak wpisu.'}</p>}
+                                    <textarea 
+                                        value={training.feedback || ''} 
+                                        onChange={(e) => onUpdateTraining(training.id, 'feedback', e.target.value)} 
+                                        className="w-full bg-blue-50/50 border border-blue-100 rounded p-2 text-xs outline-none focus:bg-white focus:border-blue-300 transition" 
+                                        rows="2" 
+                                        placeholder="Jak poszło? Wpisz tutaj swoje odczucia..." 
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -591,7 +610,24 @@
                     const next = prev.map(t => {
                         if (t.id !== id) return t;
                         const newEx = [...t.exercises];
-                        newEx[idx] = { ...newEx[idx], [field]: value };
+
+                        // Logic for changing exercise type and updating defaults
+                        if (field === 'exerciseId') {
+                             const libEx = exerciseLibrary.find(e => e.id === value);
+                             if (libEx) {
+                                 newEx[idx] = {
+                                     ...newEx[idx],
+                                     exerciseId: value,
+                                     description: libEx.defaultDescription,
+                                     series: libEx.defaultSeries,
+                                     reps: libEx.defaultReps,
+                                     load: libEx.defaultLoad
+                                 };
+                             }
+                        } else {
+                            // Standard update
+                            newEx[idx] = { ...newEx[idx], [field]: value };
+                        }
                         return { ...t, exercises: newEx };
                     });
                     const updated = next.find(t => t.id === id);
