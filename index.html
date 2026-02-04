@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ClimbLog - Trener Wspinaczki</title>
+    <title>ClimbLog - Trener Wspinaczki (Online)</title>
     
     <!-- Style: Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -26,6 +26,9 @@
         }
         .animate-fade-in {
             animation: fadeIn 0.5s ease-out forwards;
+        }
+        .status-dot {
+            height: 10px; width: 10px; border-radius: 50%; display: inline-block;
         }
     </style>
 </head>
@@ -50,12 +53,39 @@
         };
     </script>
 
+    <!-- FIREBASE MODULE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        try {
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+            if (firebaseConfig) {
+                const app = initializeApp(firebaseConfig);
+                window.auth = getAuth(app);
+                window.db = getFirestore(app);
+                window.appId = appId;
+                
+                // Expose to global window for React to access
+                window.firestoreOps = { 
+                    collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocs, writeBatch, 
+                    signInAnonymously, signInWithCustomToken 
+                };
+                console.log("Firebase initialized successfully.");
+            } else {
+                console.warn("Brak konfiguracji Firebase. Aplikacja działa w trybie offline (ograniczonym).");
+            }
+        } catch (e) {
+            console.error("Firebase init failed:", e);
+        }
+    </script>
+
     <script type="text/babel">
         if (!window.React || !window.ReactDOM) throw new Error("Brak Reacta.");
-        const { useState, useEffect } = React;
-
-        // --- KONFIGURACJA STORAGE ---
-        const STORAGE_KEY = 'climblog_data_v1';
+        const { useState, useEffect, useRef, useCallback } = React;
 
         // --- IKONY SVG ---
         function IconBase({ children, size = 24, className = "" }) {
@@ -71,11 +101,12 @@
         const TrendingUp = (p) => <IconBase {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></IconBase>;
         const User = (p) => <IconBase {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
         const MapPin = (p) => <IconBase {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></IconBase>;
-        const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></IconBase>;
+        const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
         const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
         const Dumbbell = (p) => <IconBase {...p}><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></IconBase>;
         const Trash = (p) => <IconBase {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></IconBase>;
         const ClipboardList = (p) => <IconBase {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
+        const Cloud = (p) => <IconBase {...p}><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.1-1.4-.8-2.6-1.9-3.4C10.5 11.8 10 12.8 10 14c0 .6.4 1 1 1h2v4h-4v-4h-2l4-5 4 5h-2v4h6c.6 0 1-.4 1-1z"/></IconBase>;
 
         // --- KOMPONENTY UI ---
         function Card({ children, className = "" }) {
@@ -89,42 +120,14 @@
             return <span className={`text-xs font-semibold px-2 py-1 rounded-full ${colors[type]}`}>{children}</span>;
         }
 
-        const EXERCISE_LIBRARY = [
-            { id: 'ex_pull_australian', name: 'Podciąganie Australijskie', category: 'Siła' },
-            { id: 'ex_plank', name: 'Plank Klasyczny', category: 'Core' },
-            { id: 'ex_hangboard_90', name: 'Zwis 90 stopni', category: 'Siła Palców' },
-            { id: 'ex_leg_raise', name: 'Wymachy nóg w przybloku', category: 'Core' },
-            { id: 'ex_climb_endurance', name: 'Obwody / Wytrzymałość', category: 'Wspinanie' },
-            { id: 'ex_bench_press', name: 'Wyciskanie na klatę', category: 'Siła' },
-        ];
-
-        // DANE PRZYKŁADOWE (Ładowane przy pierwszym uruchomieniu)
-        const INITIAL_SEED_DATA = [
-            { 
-                id: 1738490000000, 
-                date: '2026-01-04', 
-                location: 'Groto Bulderownia Poznań', 
-                weight: 72.0, 
-                isCompleted: true, 
-                feedback: 'Czułem moc, ale plank mnie zniszczył.', 
-                coachNotes: 'Pamiętaj o prostych plecach przy australijskich.', 
-                exercises: [
-                    { exerciseId: 'ex_pull_australian', description: 'Dynamiczny ruch', series: 3, reps: '5', load: 'masy ciała', actual: '3x5' }, 
-                    { exerciseId: 'ex_plank', description: 'Trzymaj napięty brzuch', series: 5, reps: '40s', load: '-', actual: '4x40s' }
-                ] 
-            },
-            { 
-                id: 1738600000000, 
-                date: '2026-02-05', 
-                location: 'Karma Dębiec', 
-                weight: null, 
-                isCompleted: false, 
-                feedback: '', 
-                coachNotes: 'Technika haczenia pięty.', 
-                exercises: [
-                    { exerciseId: 'ex_climb_endurance', description: 'Projekt na baldach', series: 3, reps: 'Projekt', load: '7a', actual: '' }
-                ] 
-            }
+        // --- DANE DOMYŚLNE ---
+        const INITIAL_EXERCISE_LIBRARY = [
+            { id: 'ex_pull_australian', name: 'Podciąganie Australijskie', category: 'Siła', defaultSeries: 3, defaultReps: '5', defaultLoad: 'masy ciała', defaultDescription: 'Dynamiczny ruch w górę, powolne opuszczanie.' },
+            { id: 'ex_plank', name: 'Plank Klasyczny', category: 'Core', defaultSeries: 5, defaultReps: '40s', defaultLoad: '-', defaultDescription: 'Trzymaj napięty brzuch, nie opuszczaj bioder.' },
+            { id: 'ex_hangboard_90', name: 'Zwis 90 stopni', category: 'Siła Palców', defaultSeries: 3, defaultReps: '10s', defaultLoad: 'masy ciała', defaultDescription: 'Łokcie lekko zgięte, chwyt otwarty.' },
+            { id: 'ex_leg_raise', name: 'Wymachy nóg w przybloku', category: 'Core', defaultSeries: 3, defaultReps: '8', defaultLoad: '-', defaultDescription: 'Nogi proste, ruch kontrolowany.' },
+            { id: 'ex_climb_endurance', name: 'Obwody / Wytrzymałość', category: 'Wspinanie', defaultSeries: 1, defaultReps: '1', defaultLoad: '6a', defaultDescription: 'Wspinanie ciągłe, staraj się odpoczywać na chwytach.' },
+            { id: 'ex_bench_press', name: 'Wyciskanie na klatę', category: 'Siła', defaultSeries: 3, defaultReps: '8', defaultLoad: '40kg', defaultDescription: 'Pełen zakres ruchu.' },
         ];
 
         const generateCalendarLink = (training) => {
@@ -136,7 +139,7 @@
 
         // --- WIDOKI ---
 
-        function TrainingListView({ trainings, onSelect, onAdd }) {
+        function TrainingListView({ trainings, onSelect, onAdd, exerciseLibrary }) {
             const [viewMode, setViewMode] = useState('planned');
             const filtered = trainings.filter(t => !!t.isCompleted === (viewMode === 'completed'));
             const sorted = [...filtered].sort((a, b) => viewMode === 'planned' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date));
@@ -167,7 +170,7 @@
                                     <div className="mt-3 space-y-1">
                                         {t.exercises && t.exercises.slice(0, 2).map((ex, idx) => (
                                             <div key={idx} className="text-sm text-slate-500 flex justify-between">
-                                                <span>• {EXERCISE_LIBRARY.find(e => e.id === ex.exerciseId)?.name || 'Nieznane ćwiczenie'}</span>
+                                                <span>• {exerciseLibrary.find(e => e.id === ex.exerciseId)?.name || 'Nieznane ćwiczenie'}</span>
                                                 <span className="text-xs font-mono text-slate-400">{ex.series}x{ex.reps}</span>
                                             </div>
                                         ))}
@@ -180,7 +183,7 @@
             );
         }
 
-        function TrainingDetailView({ training, isEditing, onToggleEdit, onClose, onUpdateTraining, onUpdateExercise, onAddExercise, onDeleteExercise, onDeleteTraining }) {
+        function TrainingDetailView({ training, isEditing, onToggleEdit, onClose, onUpdateTraining, onUpdateExercise, onAddExercise, onDeleteExercise, onDeleteTraining, exerciseLibrary }) {
             if (!training) return null;
             const isCompleted = !!training.isCompleted;
 
@@ -248,9 +251,9 @@
                                     <div className={`mb-2 ${isEditing ? 'pr-12' : ''}`}>
                                         {isEditing ? (
                                             <select value={ex.exerciseId} onChange={(e) => onUpdateExercise(training.id, idx, 'exerciseId', e.target.value)} className="w-full font-bold text-slate-700 bg-transparent border-b border-slate-300 outline-none pb-1">
-                                                {EXERCISE_LIBRARY.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                                                {exerciseLibrary.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             </select>
-                                        ) : <h4 className="font-bold text-slate-700">{EXERCISE_LIBRARY.find(l => l.id === ex.exerciseId)?.name || 'Ćwiczenie'}</h4>}
+                                        ) : <h4 className="font-bold text-slate-700">{exerciseLibrary.find(l => l.id === ex.exerciseId)?.name || 'Ćwiczenie'}</h4>}
                                     </div>
                                     <div className="mb-3">
                                         {isEditing ? <textarea value={ex.description} onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm outline-none placeholder:text-slate-400" placeholder="Opis ćwiczenia..." /> : <div className="text-sm text-slate-600 italic bg-slate-50 p-2 rounded">{ex.description || 'Brak opisu'}</div>}
@@ -276,8 +279,8 @@
             );
         }
 
-        function AnalyticsView({ trainings }) {
-            const [statExId, setStatExId] = useState(EXERCISE_LIBRARY[1].id);
+        function AnalyticsView({ trainings, exerciseLibrary }) {
+            const [statExId, setStatExId] = useState(exerciseLibrary[0]?.id || '');
             const stats = trainings.filter(t => t.exercises && t.exercises.some(e => e.exerciseId === statExId)).sort((a, b) => new Date(b.date) - new Date(a.date));
 
             return (
@@ -285,7 +288,7 @@
                     <h2 className="text-xl font-bold text-slate-800 flex items-center"><TrendingUp className="mr-2 text-blue-600" /> Postęp</h2>
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
                         <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Ćwiczenie</label>
-                        <select value={statExId} onChange={(e) => setStatExId(e.target.value)} className="w-full p-2.5 rounded-lg border border-slate-200 outline-none text-sm font-medium">{EXERCISE_LIBRARY.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}</select>
+                        <select value={statExId} onChange={(e) => setStatExId(e.target.value)} className="w-full p-2.5 rounded-lg border border-slate-200 outline-none text-sm font-medium">{exerciseLibrary.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}</select>
                     </div>
                     {stats.length === 0 ? <div className="text-center py-10 text-slate-400">Brak danych.</div> : stats.map(t => {
                         const ex = t.exercises.find(e => e.exerciseId === statExId);
@@ -303,67 +306,242 @@
             );
         }
 
+        function ExercisesView({ library, onUpdate, onAdd, onDelete }) {
+            const [isEditing, setIsEditing] = useState(false);
+
+            return (
+                <div className="p-4 pt-6 space-y-4 pb-20 animate-fade-in">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center"><ClipboardList className="mr-2 text-blue-600" /> Baza Ćwiczeń</h2>
+                        <button onClick={() => setIsEditing(!isEditing)} className={`text-sm font-medium px-4 py-1.5 rounded-full transition ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>{isEditing ? 'Zakończ' : 'Edytuj'}</button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                        {library.map((ex, idx) => (
+                            <Card key={ex.id} className="p-4 relative">
+                                {isEditing && (
+                                    <button 
+                                        onClick={() => onDelete(ex.id)}
+                                        className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 transition z-10"
+                                    >
+                                        <Trash size={16} />
+                                    </button>
+                                )}
+                                <div className={isEditing ? 'pr-8 space-y-3' : 'space-y-1'}>
+                                    {isEditing ? (
+                                        <>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-bold text-slate-400">Nazwa</label>
+                                                <input value={ex.name} onChange={(e) => onUpdate(ex.id, 'name', e.target.value)} className="w-full text-sm font-bold border-b border-slate-200 outline-none focus:border-blue-500 pb-1" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-bold text-slate-400">Kategoria</label>
+                                                <input value={ex.category} onChange={(e) => onUpdate(ex.id, 'category', e.target.value)} className="w-full text-xs border-b border-slate-200 outline-none focus:border-blue-500 pb-1" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] uppercase font-bold text-slate-400">Domyślny Opis</label>
+                                                <textarea value={ex.defaultDescription} onChange={(e) => onUpdate(ex.id, 'defaultDescription', e.target.value)} className="w-full text-xs border border-slate-200 rounded p-1.5 outline-none focus:border-blue-500" rows="2" />
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-2">
+                                                <div>
+                                                    <label className="text-[9px] uppercase font-bold text-slate-400">Domyślne Serie</label>
+                                                    <input type="number" value={ex.defaultSeries} onChange={(e) => onUpdate(ex.id, 'defaultSeries', parseInt(e.target.value))} className="w-full text-center text-xs border border-slate-200 rounded p-1" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] uppercase font-bold text-slate-400">Domyślne Powt.</label>
+                                                    <input value={ex.defaultReps} onChange={(e) => onUpdate(ex.id, 'defaultReps', e.target.value)} className="w-full text-center text-xs border border-slate-200 rounded p-1" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] uppercase font-bold text-slate-400">Domyślne Obciąż.</label>
+                                                    <input value={ex.defaultLoad} onChange={(e) => onUpdate(ex.id, 'defaultLoad', e.target.value)} className="w-full text-center text-xs border border-slate-200 rounded p-1" />
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="flex justify-between items-start">
+                                                <h3 className="font-bold text-slate-700">{ex.name}</h3>
+                                                <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{ex.category}</span>
+                                            </div>
+                                            <p className="text-xs text-slate-500 italic">{ex.defaultDescription || 'Brak opisu'}</p>
+                                            <div className="text-xs text-slate-400 font-mono pt-1">
+                                                Domyślnie: {ex.defaultSeries}x{ex.defaultReps} | {ex.defaultLoad}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </Card>
+                        ))}
+
+                        {isEditing && (
+                            <button onClick={onAdd} className="w-full py-3 border-2 border-dashed border-blue-200 rounded-xl text-blue-500 font-semibold flex items-center justify-center hover:bg-blue-50 transition">
+                                <Plus size={20} className="mr-2" /> Dodaj Nowe Ćwiczenie
+                            </button>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
         // --- GŁÓWNA APLIKACJA ---
 
         function App() {
             const [activeTab, setActiveTab] = useState('trainings');
-            // Zmiana: Inicjalizacja stanu z LocalStorage
-            const [trainings, setTrainings] = useState(() => {
-                const saved = localStorage.getItem(STORAGE_KEY);
-                return saved ? JSON.parse(saved) : INITIAL_SEED_DATA;
-            });
+            const [trainings, setTrainings] = useState([]);
+            const [exerciseLibrary, setExerciseLibrary] = useState(INITIAL_EXERCISE_LIBRARY);
             const [selectedId, setSelectedId] = useState(null);
             const [isEditing, setIsEditing] = useState(false);
+            const [user, setUser] = useState(null);
+            const [isOnline, setIsOnline] = useState(false);
+            const saveTimeout = useRef(null);
 
-            // Zmiana: Zapis do LocalStorage przy każdej zmianie trainings
+            // --- FIREBASE SYNC ---
             useEffect(() => {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(trainings));
-            }, [trainings]);
+                let unsubAuth = null;
+                let unsubTrainings = null;
+                let unsubSettings = null;
+
+                const initSync = async () => {
+                    // Czekamy na załadowanie biblioteki
+                    let attempts = 0;
+                    while (!window.firestoreOps && attempts < 20) { await new Promise(r => setTimeout(r, 100)); attempts++; }
+                    if (!window.firestoreOps) return;
+
+                    const { signInAnonymously, signInWithCustomToken, collection, doc, onSnapshot, query } = window.firestoreOps;
+                    
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(window.auth, __initial_auth_token);
+                        else await signInAnonymously(window.auth);
+                    } catch (e) { console.error("Auth failed", e); return; }
+
+                    unsubAuth = window.auth.onAuthStateChanged(async (u) => {
+                        setUser(u);
+                        setIsOnline(!!u);
+                        if (u) {
+                            // Sync Trainings
+                            const trainingsRef = collection(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings');
+                            unsubTrainings = onSnapshot(query(trainingsRef), (snap) => {
+                                const data = snap.docs.map(d => d.data());
+                                setTrainings(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
+                            });
+
+                            // Sync Settings (Exercises)
+                            const settingsRef = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'exercises');
+                            unsubSettings = onSnapshot(settingsRef, (snap) => {
+                                if (snap.exists()) {
+                                    setExerciseLibrary(snap.data().list || INITIAL_EXERCISE_LIBRARY);
+                                }
+                            });
+                        }
+                    });
+                };
+                initSync();
+                return () => { 
+                    if (unsubAuth) unsubAuth(); 
+                    if (unsubTrainings) unsubTrainings();
+                    if (unsubSettings) unsubSettings();
+                };
+            }, []);
+
+            // --- FUNKCJE ZAPISU (Firebase) ---
+
+            const saveTrainingToDb = useCallback((training) => {
+                if (!user || !window.firestoreOps) return;
+                if (saveTimeout.current) clearTimeout(saveTimeout.current);
+                saveTimeout.current = setTimeout(async () => {
+                    try {
+                        const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', training.id.toString());
+                        await window.firestoreOps.setDoc(ref, training);
+                    } catch (e) { console.error("Save error:", e); }
+                }, 500);
+            }, [user]);
+
+            const saveLibraryToDb = useCallback((newLib) => {
+                if (!user || !window.firestoreOps) return;
+                try {
+                    const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'exercises');
+                    window.firestoreOps.setDoc(ref, { list: newLib });
+                } catch (e) { console.error("Save lib error:", e); }
+            }, [user]);
+
+            // --- AKCJE ---
 
             const handleUpdateT = (id, field, value) => {
-                setTrainings(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t));
+                setTrainings(prev => {
+                    const next = prev.map(t => t.id === id ? { ...t, [field]: value } : t);
+                    const updated = next.find(t => t.id === id);
+                    if (updated) saveTrainingToDb(updated);
+                    return next;
+                });
             };
 
             const handleUpdateE = (id, idx, field, value) => {
-                setTrainings(prev => prev.map(t => {
-                    if (t.id !== id) return t;
-                    const newEx = [...t.exercises];
-                    newEx[idx] = { ...newEx[idx], [field]: value };
-                    return { ...t, exercises: newEx };
-                }));
+                setTrainings(prev => {
+                    const next = prev.map(t => {
+                        if (t.id !== id) return t;
+                        const newEx = [...t.exercises];
+                        newEx[idx] = { ...newEx[idx], [field]: value };
+                        return { ...t, exercises: newEx };
+                    });
+                    const updated = next.find(t => t.id === id);
+                    if (updated) saveTrainingToDb(updated);
+                    return next;
+                });
             };
 
             const handleAddE = (id) => {
-                setTrainings(prev => prev.map(t => {
-                    if (t.id !== id) return t;
-                    const currentExercises = Array.isArray(t.exercises) ? t.exercises : [];
-                    return { 
-                        ...t, 
-                        exercises: [
-                            ...currentExercises, 
-                            { exerciseId: EXERCISE_LIBRARY[0].id, description: '', series: 3, reps: '10', load: '-', actual: '' }
-                        ] 
-                    };
-                }));
+                setTrainings(prev => {
+                    const next = prev.map(t => {
+                        if (t.id !== id) return t;
+                        const currentExercises = Array.isArray(t.exercises) ? t.exercises : [];
+                        const defaultEx = exerciseLibrary[0] || {};
+                        return { 
+                            ...t, 
+                            exercises: [
+                                ...currentExercises, 
+                                { 
+                                    exerciseId: defaultEx.id || 'unknown', 
+                                    description: defaultEx.defaultDescription || '', 
+                                    series: defaultEx.defaultSeries || 3, 
+                                    reps: defaultEx.defaultReps || '10', 
+                                    load: defaultEx.defaultLoad || '-', 
+                                    actual: '' 
+                                }
+                            ] 
+                        };
+                    });
+                    const updated = next.find(t => t.id === id);
+                    if (updated) saveTrainingToDb(updated);
+                    return next;
+                });
             };
 
             const handleDeleteE = (id, idx) => {
                 if(!confirm("Usuń ćwiczenie?")) return;
-                setTrainings(prev => prev.map(t => {
-                    if (t.id !== id) return t;
-                    return { ...t, exercises: t.exercises.filter((_, i) => i !== idx) };
-                }));
+                setTrainings(prev => {
+                    const next = prev.map(t => {
+                        if (t.id !== id) return t;
+                        return { ...t, exercises: t.exercises.filter((_, i) => i !== idx) };
+                    });
+                    const updated = next.find(t => t.id === id);
+                    if (updated) saveTrainingToDb(updated);
+                    return next;
+                });
             };
 
-            const handleDeleteT = (id) => {
+            const handleDeleteT = async (id) => {
                 if (!confirm("Usuń cały trening?")) return;
-                setTrainings(prev => prev.filter(t => t.id !== id));
-                setSelectedId(null); 
-                setIsEditing(false);
+                if (user && window.firestoreOps) {
+                    try {
+                        await window.firestoreOps.deleteDoc(window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', id.toString()));
+                        setSelectedId(null); setIsEditing(false);
+                    } catch (e) { console.error(e); }
+                }
             };
 
-            const handleAddT = () => {
+            const handleAddT = async () => {
                 const newId = Date.now();
+                const defaultEx = exerciseLibrary[0] || {};
                 const newT = { 
                     id: newId, 
                     date: new Date().toISOString().split('T')[0], 
@@ -372,35 +550,95 @@
                     isCompleted: false, 
                     feedback: '', 
                     coachNotes: '', 
-                    exercises: [{ exerciseId: EXERCISE_LIBRARY[4].id, description: '', series: 3, reps: '1', load: '6a', actual: '' }] 
+                    exercises: [{ 
+                        exerciseId: defaultEx.id || 'unknown', 
+                        description: defaultEx.defaultDescription || '', 
+                        series: defaultEx.defaultSeries || 3, 
+                        reps: defaultEx.defaultReps || '10', 
+                        load: defaultEx.defaultLoad || '-', 
+                        actual: '' 
+                    }] 
                 };
+                
+                // Zapisz do bazy i czekaj na potwierdzenie
+                if (user && window.firestoreOps) {
+                    const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', newId.toString());
+                    await window.firestoreOps.setDoc(ref, newT);
+                }
                 
                 setTrainings(p => [newT, ...p]);
                 setSelectedId(newId);
                 setIsEditing(true);
             };
 
+            // Lib Actions
+            const handleUpdateLib = (id, field, value) => {
+                const newLib = exerciseLibrary.map(ex => ex.id === id ? { ...ex, [field]: value } : ex);
+                setExerciseLibrary(newLib);
+                saveLibraryToDb(newLib);
+            };
+
+            const handleAddLib = () => {
+                const newEx = {
+                    id: `ex_${Date.now()}`,
+                    name: 'Nowe Ćwiczenie',
+                    category: 'Ogólne',
+                    defaultSeries: 3,
+                    defaultReps: '10',
+                    defaultLoad: '-',
+                    defaultDescription: ''
+                };
+                const newLib = [...exerciseLibrary, newEx];
+                setExerciseLibrary(newLib);
+                saveLibraryToDb(newLib);
+            };
+
+            const handleDeleteLib = (id) => {
+                if(!confirm("Czy na pewno chcesz usunąć to ćwiczenie z bazy?")) return;
+                const newLib = exerciseLibrary.filter(ex => ex.id !== id);
+                setExerciseLibrary(newLib);
+                saveLibraryToDb(newLib);
+            };
+
             const selected = trainings.find(t => t.id === selectedId);
 
             return (
                 <div className="max-w-md mx-auto min-h-screen bg-slate-50 shadow-2xl relative overflow-x-hidden">
+                    {/* Status Indicator */}
+                    <div className="absolute top-2 right-2 z-50 pointer-events-none">
+                        <div className={`status-dot ${isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300'}`} title={isOnline ? 'Online' : 'Offline'}></div>
+                    </div>
+
                     {selected ? (
                         <TrainingDetailView 
                             training={selected} isEditing={isEditing} 
-                            onToggleEdit={() => setIsEditing(!isEditing)} 
+                            onToggleEdit={() => {
+                                if (isEditing) saveTrainingToDb(selected); 
+                                setIsEditing(!isEditing);
+                            }} 
                             onClose={() => { setSelectedId(null); setIsEditing(false); }}
                             onUpdateTraining={handleUpdateT} onUpdateExercise={handleUpdateE}
                             onAddExercise={handleAddE} onDeleteExercise={handleDeleteE} onDeleteTraining={handleDeleteT}
+                            exerciseLibrary={exerciseLibrary}
                         />
                     ) : activeTab === 'trainings' ? (
-                        <TrainingListView trainings={trainings} onSelect={(id) => { setSelectedId(id); setIsEditing(false); }} onAdd={handleAddT} />
+                        <TrainingListView trainings={trainings} onSelect={(id) => { setSelectedId(id); setIsEditing(false); }} onAdd={handleAddT} exerciseLibrary={exerciseLibrary} />
+                    ) : activeTab === 'analytics' ? (
+                        <AnalyticsView trainings={trainings} exerciseLibrary={exerciseLibrary} />
                     ) : (
-                        <AnalyticsView trainings={trainings} />
+                        <ExercisesView 
+                            library={exerciseLibrary} 
+                            onUpdate={handleUpdateLib} 
+                            onAdd={handleAddLib} 
+                            onDelete={handleDeleteLib} 
+                        />
                     )}
+                    
                     {!selected && (
                         <div className="fixed bottom-0 max-w-md w-full bg-white/90 backdrop-blur-lg border-t border-slate-200 flex justify-around py-2 z-50">
-                            <button onClick={() => setActiveTab('trainings')} className={`flex flex-col items-center p-2 rounded-xl w-32 transition ${activeTab === 'trainings' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400'}`}><Calendar size={22} /><span className="text-[10px] font-bold mt-1 uppercase">Rozpiska</span></button>
-                            <button onClick={() => setActiveTab('analytics')} className={`flex flex-col items-center p-2 rounded-xl w-32 transition ${activeTab === 'analytics' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400'}`}><TrendingUp size={22} /><span className="text-[10px] font-bold mt-1 uppercase">Postęp</span></button>
+                            <button onClick={() => setActiveTab('trainings')} className={`flex flex-col items-center p-2 rounded-xl w-24 transition ${activeTab === 'trainings' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400'}`}><Calendar size={22} /><span className="text-[10px] font-bold mt-1 uppercase">Rozpiska</span></button>
+                            <button onClick={() => setActiveTab('analytics')} className={`flex flex-col items-center p-2 rounded-xl w-24 transition ${activeTab === 'analytics' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400'}`}><TrendingUp size={22} /><span className="text-[10px] font-bold mt-1 uppercase">Postęp</span></button>
+                            <button onClick={() => setActiveTab('exercises')} className={`flex flex-col items-center p-2 rounded-xl w-24 transition ${activeTab === 'exercises' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400'}`}><ClipboardList size={22} /><span className="text-[10px] font-bold mt-1 uppercase">Zadania</span></button>
                         </div>
                     )}
                 </div>
