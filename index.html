@@ -50,33 +50,12 @@
         };
     </script>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        try {
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-            if (firebaseConfig) {
-                const app = initializeApp(firebaseConfig);
-                window.auth = getAuth(app);
-                window.db = getFirestore(app);
-                window.appId = appId;
-                window.firestoreOps = { collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocs, writeBatch, signInAnonymously, signInWithCustomToken };
-                console.log("Firebase initialized.");
-            } else {
-                window.isOffline = true;
-            }
-        } catch (e) {
-            window.isOffline = true;
-        }
-    </script>
-
     <script type="text/babel">
         if (!window.React || !window.ReactDOM) throw new Error("Brak Reacta.");
-        const { useState, useEffect, useRef, useCallback } = React;
+        const { useState, useEffect } = React;
+
+        // --- KONFIGURACJA STORAGE ---
+        const STORAGE_KEY = 'climblog_data_v1';
 
         // --- IKONY SVG ---
         function IconBase({ children, size = 24, className = "" }) {
@@ -92,7 +71,7 @@
         const TrendingUp = (p) => <IconBase {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></IconBase>;
         const User = (p) => <IconBase {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
         const MapPin = (p) => <IconBase {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></IconBase>;
-        const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
+        const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></IconBase>;
         const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
         const Dumbbell = (p) => <IconBase {...p}><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></IconBase>;
         const Trash = (p) => <IconBase {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></IconBase>;
@@ -117,6 +96,35 @@
             { id: 'ex_leg_raise', name: 'Wymachy nóg w przybloku', category: 'Core' },
             { id: 'ex_climb_endurance', name: 'Obwody / Wytrzymałość', category: 'Wspinanie' },
             { id: 'ex_bench_press', name: 'Wyciskanie na klatę', category: 'Siła' },
+        ];
+
+        // DANE PRZYKŁADOWE (Ładowane przy pierwszym uruchomieniu)
+        const INITIAL_SEED_DATA = [
+            { 
+                id: 1738490000000, 
+                date: '2026-01-04', 
+                location: 'Groto Bulderownia Poznań', 
+                weight: 72.0, 
+                isCompleted: true, 
+                feedback: 'Czułem moc, ale plank mnie zniszczył.', 
+                coachNotes: 'Pamiętaj o prostych plecach przy australijskich.', 
+                exercises: [
+                    { exerciseId: 'ex_pull_australian', description: 'Dynamiczny ruch', series: 3, reps: '5', load: 'masy ciała', actual: '3x5' }, 
+                    { exerciseId: 'ex_plank', description: 'Trzymaj napięty brzuch', series: 5, reps: '40s', load: '-', actual: '4x40s' }
+                ] 
+            },
+            { 
+                id: 1738600000000, 
+                date: '2026-02-05', 
+                location: 'Karma Dębiec', 
+                weight: null, 
+                isCompleted: false, 
+                feedback: '', 
+                coachNotes: 'Technika haczenia pięty.', 
+                exercises: [
+                    { exerciseId: 'ex_climb_endurance', description: 'Projekt na baldach', series: 3, reps: 'Projekt', load: '7a', actual: '' }
+                ] 
+            }
         ];
 
         const generateCalendarLink = (training) => {
@@ -299,118 +307,62 @@
 
         function App() {
             const [activeTab, setActiveTab] = useState('trainings');
-            const [trainings, setTrainings] = useState([]);
+            // Zmiana: Inicjalizacja stanu z LocalStorage
+            const [trainings, setTrainings] = useState(() => {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                return saved ? JSON.parse(saved) : INITIAL_SEED_DATA;
+            });
             const [selectedId, setSelectedId] = useState(null);
             const [isEditing, setIsEditing] = useState(false);
-            const [user, setUser] = useState(null);
-            const [loading, setLoading] = useState(true);
-            const saveTimeout = useRef(null);
 
+            // Zmiana: Zapis do LocalStorage przy każdej zmianie trainings
             useEffect(() => {
-                let unsubS = null; let unsubA = null;
-                const init = async () => {
-                    let attempts = 0;
-                    while (!window.firestoreOps && attempts < 20) { await new Promise(r => setTimeout(r, 100)); attempts++; }
-                    if (!window.firestoreOps) { setLoading(false); return; }
-                    const { signInAnonymously, signInWithCustomToken, collection, query, onSnapshot, doc, setDoc } = window.firestoreOps;
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(window.auth, __initial_auth_token);
-                        else await signInAnonymously(window.auth);
-                    } catch (e) { setLoading(false); return; }
-                    unsubA = window.auth.onAuthStateChanged(async (u) => {
-                        setUser(u);
-                        if (u) {
-                            const ref = collection(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings');
-                            unsubS = onSnapshot(query(ref), (snap) => {
-                                // Pobieramy dane z serwera
-                                const data = snap.docs.map(d => d.data());
-                                // Sortujemy datami malejąco (najnowsze na górze)
-                                setTrainings(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
-                                setLoading(false);
-                            }, () => setLoading(false));
-                        } else setLoading(false);
-                    });
-                };
-                init();
-                return () => { if (unsubS) unsubS(); if (unsubA) unsubA(); };
-            }, []);
-
-            // FUNKCJA ZAPISU (Debounced - 300ms)
-            const saveToDb = useCallback((training) => {
-                if (!user || !window.firestoreOps) return;
-                if (saveTimeout.current) clearTimeout(saveTimeout.current);
-                saveTimeout.current = setTimeout(async () => {
-                    try {
-                        const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', training.id.toString());
-                        await window.firestoreOps.setDoc(ref, training);
-                        console.log("Sync success:", training.id);
-                    } catch (e) { console.error("Sync error:", e); }
-                }, 300);
-            }, [user]);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(trainings));
+            }, [trainings]);
 
             const handleUpdateT = (id, field, value) => {
-                setTrainings(prev => {
-                    const next = prev.map(t => t.id === id ? { ...t, [field]: value } : t);
-                    const updated = next.find(t => t.id === id);
-                    if (updated) saveToDb(updated);
-                    return next;
-                });
+                setTrainings(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t));
             };
 
             const handleUpdateE = (id, idx, field, value) => {
-                setTrainings(prev => {
-                    const next = prev.map(t => {
-                        if (t.id !== id) return t;
-                        const newEx = [...t.exercises];
-                        newEx[idx] = { ...newEx[idx], [field]: value };
-                        return { ...t, exercises: newEx };
-                    });
-                    const updated = next.find(t => t.id === id);
-                    if (updated) saveToDb(updated);
-                    return next;
-                });
+                setTrainings(prev => prev.map(t => {
+                    if (t.id !== id) return t;
+                    const newEx = [...t.exercises];
+                    newEx[idx] = { ...newEx[idx], [field]: value };
+                    return { ...t, exercises: newEx };
+                }));
             };
 
             const handleAddE = (id) => {
-                setTrainings(prev => {
-                    const next = prev.map(t => {
-                        if (t.id !== id) return t;
-                        // FIX: Upewniamy się, że exercises istnieje przed dodaniem
-                        const currentExercises = Array.isArray(t.exercises) ? t.exercises : [];
-                        return { 
-                            ...t, 
-                            exercises: [
-                                ...currentExercises, 
-                                { exerciseId: EXERCISE_LIBRARY[0].id, description: '', series: 3, reps: '10', load: '-', actual: '' }
-                            ] 
-                        };
-                    });
-                    const updated = next.find(t => t.id === id);
-                    if (updated) saveToDb(updated);
-                    return next;
-                });
+                setTrainings(prev => prev.map(t => {
+                    if (t.id !== id) return t;
+                    const currentExercises = Array.isArray(t.exercises) ? t.exercises : [];
+                    return { 
+                        ...t, 
+                        exercises: [
+                            ...currentExercises, 
+                            { exerciseId: EXERCISE_LIBRARY[0].id, description: '', series: 3, reps: '10', load: '-', actual: '' }
+                        ] 
+                    };
+                }));
             };
 
             const handleDeleteE = (id, idx) => {
                 if(!confirm("Usuń ćwiczenie?")) return;
-                setTrainings(prev => {
-                    const next = prev.map(t => t.id === id ? { ...t, exercises: t.exercises.filter((_, i) => i !== idx) } : t);
-                    saveToDb(next.find(t => t.id === id));
-                    return next;
-                });
+                setTrainings(prev => prev.map(t => {
+                    if (t.id !== id) return t;
+                    return { ...t, exercises: t.exercises.filter((_, i) => i !== idx) };
+                }));
             };
 
-            const handleDeleteT = async (id) => {
+            const handleDeleteT = (id) => {
                 if (!confirm("Usuń cały trening?")) return;
-                if (user && window.firestoreOps) {
-                    try {
-                        await window.firestoreOps.deleteDoc(window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', id.toString()));
-                        setSelectedId(null); setIsEditing(false);
-                    } catch (e) { console.error(e); }
-                }
+                setTrainings(prev => prev.filter(t => t.id !== id));
+                setSelectedId(null); 
+                setIsEditing(false);
             };
 
-            const handleAddT = async () => {
+            const handleAddT = () => {
                 const newId = Date.now();
                 const newT = { 
                     id: newId, 
@@ -423,19 +375,10 @@
                     exercises: [{ exerciseId: EXERCISE_LIBRARY[4].id, description: '', series: 3, reps: '1', load: '6a', actual: '' }] 
                 };
                 
-                // KROK 1: Najpierw wymuszamy zapis w bazie
-                if (user && window.firestoreOps) {
-                    const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', newId.toString());
-                    await window.firestoreOps.setDoc(ref, newT);
-                }
-                
-                // KROK 2: Dopiero po zapisie przechodzimy do edycji
-                setTrainings(p => [newT, ...p]); // Optymistyczna aktualizacja lokalna
+                setTrainings(p => [newT, ...p]);
                 setSelectedId(newId);
                 setIsEditing(true);
             };
-
-            if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400 font-medium animate-pulse">Synchronizacja danych...</div>;
 
             const selected = trainings.find(t => t.id === selectedId);
 
@@ -444,10 +387,7 @@
                     {selected ? (
                         <TrainingDetailView 
                             training={selected} isEditing={isEditing} 
-                            onToggleEdit={() => {
-                                if (isEditing) saveToDb(selected); 
-                                setIsEditing(!isEditing);
-                            }} 
+                            onToggleEdit={() => setIsEditing(!isEditing)} 
                             onClose={() => { setSelectedId(null); setIsEditing(false); }}
                             onUpdateTraining={handleUpdateT} onUpdateExercise={handleUpdateE}
                             onAddExercise={handleAddE} onDeleteExercise={handleDeleteE} onDeleteTraining={handleDeleteT}
