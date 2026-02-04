@@ -16,19 +16,27 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
-        body { background-color: #f8fafc; }
+        body { background-color: #ffffff; color: #1f2937; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
+            animation: fadeIn 0.4s ease-out forwards;
         }
-        .status-dot {
-            height: 10px; width: 10px; border-radius: 50%; display: inline-block;
+        
+        /* Custom inputs for cleaner look */
+        .clean-input {
+            background: transparent;
+            border-bottom: 1px solid #e5e7eb;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .clean-input:focus {
+            border-color: #3b82f6;
         }
     </style>
 </head>
@@ -61,25 +69,24 @@
 
         try {
             // ------------------------------------------------------------------
-            // KROK 1: WKLEJ TUTAJ SWOJĄ KONFIGURACJĘ FIREBASE (Zastąp null poniżej)
-            // Znajdziesz ją w Firebase Console -> Project Settings -> General -> Your apps
-            // Powinno to wyglądać tak: 
-            // const userConfig = { apiKey: "AIza...", authDomain: "...", projectId: "...", ... };
+            // KONFIGURACJA UŻYTKOWNIKA (BEZPIECZEŃSTWO)
+            // ------------------------------------------------------------------
+            // 1. Wejdź na https://console.firebase.google.com/
+            // 2. Skopiuj konfigurację ze swojego projektu (Project Settings -> General)
+            // 3. Wklej poniżej zamiast pustych cudzysłowów
             // ------------------------------------------------------------------
             
             const userConfig = {
-                                apiKey: "AIzaSyAgIGDQaKWHcBiEUwVavMOpj5TX5n81Bnw",
-                                authDomain: "climblog-7432b.firebaseapp.com",
-                                projectId: "climblog-7432b",
-                                storageBucket: "climblog-7432b.firebasestorage.app",
-                                messagingSenderId: "155094312417",
-                                appId: "1:155094312417:web:19e35e3699737be22cdea0"
-                                }; 
+                apiKey: "AIzaSyAgIGDQaKWHcBiEUwVavMOpj5TX5n81Bnw",
+                authDomain: "climblog-7432b.firebaseapp.com",
+                projectId: "climblog-7432b",
+                storageBucket: "climblog-7432b.firebasestorage.app",
+                messagingSenderId: "155094312417",
+                appId: "1:155094312417:web:19e35e3699737be22cdea0"
+            }; 
 
-            // ------------------------------------------------------------------
-            
-            // Logika wyboru konfiguracji (Twoja vs Wewnętrzna Canvas)
-            const firebaseConfig = userConfig || (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null);
+            // Fallback dla środowiska Canvas (nie dotyczy Twojego hostingu)
+            const firebaseConfig = (userConfig.apiKey !== "TU_WKLEJ_API_KEY") ? userConfig : (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null);
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'climblog-production';
 
             if (firebaseConfig) {
@@ -87,15 +94,10 @@
                 window.auth = getAuth(app);
                 window.db = getFirestore(app);
                 window.appId = appId;
-                
-                // Expose to global window for React to access
-                window.firestoreOps = { 
-                    collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocs, writeBatch, 
-                    signInAnonymously, signInWithCustomToken 
-                };
-                console.log("Firebase initialized successfully.");
+                window.firestoreOps = { collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocs, writeBatch, signInAnonymously, signInWithCustomToken };
+                console.log("Firebase initialized.");
             } else {
-                console.warn("Brak konfiguracji Firebase. Aby aplikacja działała na hostingu, uzupełnij zmienną 'userConfig' w kodzie HTML.");
+                console.warn("Brak konfiguracji Firebase. Uzupełnij obiekt userConfig w kodzie.");
             }
         } catch (e) {
             console.error("Firebase init failed:", e);
@@ -121,23 +123,35 @@
         const User = (p) => <IconBase {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
         const MapPin = (p) => <IconBase {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></IconBase>;
         const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
-        const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
         const Dumbbell = (p) => <IconBase {...p}><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></IconBase>;
         const Trash = (p) => <IconBase {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></IconBase>;
         const ClipboardList = (p) => <IconBase {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
-        const Cloud = (p) => <IconBase {...p}><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.1-1.4-.8-2.6-1.9-3.4C10.5 11.8 10 12.8 10 14c0 .6.4 1 1 1h2v4h-4v-4h-2l4-5 4 5h-2v4h6c.6 0 1-.4 1-1z"/></IconBase>;
-        const Settings2 = (p) => <IconBase {...p}><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></IconBase>;
+        const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
 
         // --- KOMPONENTY UI ---
         function Card({ children, className = "" }) {
             return (
-                <div className={`bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden ${className}`}>{children}</div>
+                <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden ${className}`}>{children}</div>
             );
         }
 
         function Badge({ children, type = 'neutral' }) {
-            const colors = { neutral: 'bg-slate-100 text-slate-600', success: 'bg-emerald-100 text-emerald-700', warning: 'bg-amber-100 text-amber-700' };
-            return <span className={`text-xs font-semibold px-2 py-1 rounded-full ${colors[type]}`}>{children}</span>;
+            const colors = { neutral: 'bg-gray-100 text-gray-600', success: 'bg-green-50 text-green-700 border border-green-100', warning: 'bg-amber-50 text-amber-700 border border-amber-100' };
+            return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${colors[type]}`}>{children}</span>;
+        }
+
+        function Header({ title, icon: Icon, action }) {
+            return (
+                <div className="flex justify-between items-center mb-6 pt-2">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center">
+                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg mr-3">
+                            <Icon size={20} />
+                        </div>
+                        {title}
+                    </h2>
+                    {action}
+                </div>
+            );
         }
 
         // --- DANE DOMYŚLNE ---
@@ -145,9 +159,7 @@
             { id: 'ex_pull_australian', name: 'Podciąganie Australijskie', category: 'Siła', defaultSeries: 3, defaultReps: '5', defaultLoad: 'masy ciała', defaultDescription: 'Dynamiczny ruch w górę, powolne opuszczanie.' },
             { id: 'ex_plank', name: 'Plank Klasyczny', category: 'Core', defaultSeries: 5, defaultReps: '40s', defaultLoad: '-', defaultDescription: 'Trzymaj napięty brzuch, nie opuszczaj bioder.' },
             { id: 'ex_hangboard_90', name: 'Zwis 90 stopni', category: 'Siła Palców', defaultSeries: 3, defaultReps: '10s', defaultLoad: 'masy ciała', defaultDescription: 'Łokcie lekko zgięte, chwyt otwarty.' },
-            { id: 'ex_leg_raise', name: 'Wymachy nóg w przybloku', category: 'Core', defaultSeries: 3, defaultReps: '8', defaultLoad: '-', defaultDescription: 'Nogi proste, ruch kontrolowany.' },
             { id: 'ex_climb_endurance', name: 'Obwody / Wytrzymałość', category: 'Wspinanie', defaultSeries: 1, defaultReps: '1', defaultLoad: '6a', defaultDescription: 'Wspinanie ciągłe, staraj się odpoczywać na chwytach.' },
-            { id: 'ex_bench_press', name: 'Wyciskanie na klatę', category: 'Siła', defaultSeries: 3, defaultReps: '8', defaultLoad: '40kg', defaultDescription: 'Pełen zakres ruchu.' },
         ];
 
         const generateCalendarLink = (training) => {
@@ -165,35 +177,47 @@
             const sorted = [...filtered].sort((a, b) => viewMode === 'planned' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date));
 
             return (
-                <div className="p-4 pt-6 space-y-4 pb-20 animate-fade-in">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-slate-800 flex items-center"><Calendar className="mr-2 text-blue-600" /> Twoja Rozpiska</h2>
-                        <button onClick={onAdd} className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition active:scale-95 flex items-center justify-center"><Plus size={24} /></button>
+                <div className="p-4 pt-6 pb-24 animate-fade-in max-w-md mx-auto">
+                    <Header 
+                        title="Twoja Rozpiska" 
+                        icon={Calendar} 
+                        action={<button onClick={onAdd} className="bg-blue-600 text-white w-10 h-10 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center"><Plus size={24} /></button>}
+                    />
+                    
+                    <div className="bg-gray-100 p-1 rounded-xl flex mb-6">
+                        <button onClick={() => setViewMode('planned')} className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wide rounded-lg transition ${viewMode === 'planned' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>Zaplanowane</button>
+                        <button onClick={() => setViewMode('completed')} className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wide rounded-lg transition ${viewMode === 'completed' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}>Zakończone</button>
                     </div>
-                    <div className="bg-slate-100 p-1 rounded-xl flex mb-6">
-                        <button onClick={() => setViewMode('planned')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${viewMode === 'planned' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>Zaplanowane</button>
-                        <button onClick={() => setViewMode('completed')} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition ${viewMode === 'completed' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}>Zakończone</button>
-                    </div>
+
                     {sorted.length === 0 ? (
-                        <div className="text-center py-12 text-slate-400"><ClipboardList className="mx-auto mb-3 opacity-20" size={48} />{viewMode === 'planned' ? 'Brak zaplanowanych treningów 🎉' : 'Brak historii treningów'}</div>
+                        <div className="text-center py-16 text-gray-300">
+                            <ClipboardList className="mx-auto mb-3 opacity-20" size={48} />
+                            <p className="text-sm font-medium">{viewMode === 'planned' ? 'Brak zaplanowanych treningów' : 'Brak historii'}</p>
+                        </div>
                     ) : (
                         sorted.map((t) => (
-                            <Card key={t.id} className="mb-4 hover:shadow-md transition duration-300">
+                            <Card key={t.id} className="mb-3 hover:border-blue-100 transition duration-200 group">
                                 <div className="p-4 cursor-pointer" onClick={() => onSelect(t.id)}>
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <div className={`text-sm font-semibold uppercase ${t.isCompleted ? 'text-emerald-600' : 'text-blue-600'}`}>{new Date(t.date).toLocaleDateString('pl-PL', { weekday: 'long', month: 'long', day: 'numeric' })}</div>
-                                            <div className="flex items-center text-slate-600 mt-1"><MapPin size={14} className="mr-1" /><span className="text-sm">{t.location || 'Brak lokalizacji'}</span></div>
+                                            <div className="text-sm font-bold text-gray-800">
+                                                {new Date(t.date).toLocaleDateString('pl-PL', { weekday: 'long', month: 'long', day: 'numeric' })}
+                                            </div>
+                                            <div className="flex items-center text-gray-400 mt-0.5">
+                                                <MapPin size={12} className="mr-1" />
+                                                <span className="text-xs">{t.location || 'Brak lokalizacji'}</span>
+                                            </div>
                                         </div>
                                         {t.isCompleted ? <Badge type="success">Ukończony</Badge> : <Badge type="warning">Zaplanowany</Badge>}
                                     </div>
-                                    <div className="mt-3 space-y-1">
+                                    <div className="mt-3 space-y-1 pl-1 border-l-2 border-gray-100 group-hover:border-blue-100 transition">
                                         {t.exercises && t.exercises.slice(0, 2).map((ex, idx) => (
-                                            <div key={idx} className="text-sm text-slate-500 flex justify-between">
-                                                <span>• {exerciseLibrary.find(e => e.id === ex.exerciseId)?.name || 'Nieznane ćwiczenie'}</span>
-                                                <span className="text-xs font-mono text-slate-400">{ex.series}x{ex.reps}</span>
+                                            <div key={idx} className="text-xs text-gray-500 flex justify-between">
+                                                <span>{exerciseLibrary.find(e => e.id === ex.exerciseId)?.name || 'Ćwiczenie'}</span>
+                                                <span className="font-mono text-gray-400">{ex.series}x{ex.reps}</span>
                                             </div>
                                         ))}
+                                        {t.exercises && t.exercises.length > 2 && <div className="text-[10px] text-gray-400 pt-1">+ {t.exercises.length - 2} więcej</div>}
                                     </div>
                                 </div>
                             </Card>
@@ -208,91 +232,112 @@
             const isCompleted = !!training.isCompleted;
 
             return (
-                <div className="pb-24 animate-fade-in">
-                    <div className="sticky top-0 bg-white/95 backdrop-blur-md z-10 border-b border-slate-100 p-4 flex items-center justify-between shadow-sm">
-                        <button onClick={onClose} className="text-slate-500 hover:text-slate-800 flex items-center"><ChevronRight className="rotate-180 mr-1" size={20} /> Wróć</button>
-                        <h2 className="font-bold text-slate-800">Szczegóły</h2>
+                <div className="pb-24 animate-fade-in bg-white min-h-screen">
+                    {/* Compact Top Bar */}
+                    <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-800 flex items-center text-sm font-medium transition"><ChevronRight className="rotate-180 mr-1" size={18} /> Wróć</button>
                         <div className="flex items-center gap-2">
-                            {isEditing && <button onClick={() => onDeleteTraining(training.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-full transition"><Trash size={20} /></button>}
-                            <button onClick={onToggleEdit} className={`text-sm font-medium px-4 py-1.5 rounded-full transition ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{isEditing ? 'Gotowe' : 'Edytuj'}</button>
+                            {isEditing && <button onClick={() => onDeleteTraining(training.id)} className="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-50 rounded-full transition"><Trash size={16} /></button>}
+                            <button onClick={onToggleEdit} className={`text-xs font-bold px-4 py-2 rounded-full transition uppercase tracking-wider ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{isEditing ? 'Gotowe' : 'Edytuj'}</button>
                         </div>
                     </div>
-                    <div className="p-4 space-y-6">
-                        <Card className={`p-5 text-white shadow-lg ${isCompleted ? 'bg-gradient-to-br from-emerald-700 to-teal-900' : 'bg-gradient-to-br from-slate-800 to-slate-900'}`}>
-                            <div className="flex justify-between items-start">
-                                <div className="w-full">
-                                    {isEditing ? (
-                                        <input type="date" value={training.date} onChange={(e) => onUpdateTraining(training.id, 'date', e.target.value)} className="bg-white/20 border-white/30 rounded px-2 py-1 text-white text-lg font-bold outline-none w-full" />
-                                    ) : (
-                                        <>
-                                            <h1 className="text-2xl font-bold capitalize">{new Date(training.date).toLocaleDateString('pl-PL', { weekday: 'long' })}</h1>
-                                            <p className="text-slate-200 text-sm">{new Date(training.date).toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                                        </>
-                                    )}
-                                    <div className="flex items-center mt-2 text-sm text-slate-200">
-                                        <MapPin size={14} className="mr-1" />
-                                        {isEditing ? <input value={training.location} onChange={(e) => onUpdateTraining(training.id, 'location', e.target.value)} className="bg-white/10 border-none rounded p-1 text-white text-sm w-full outline-none" placeholder="Lokalizacja..." /> : <span>{training.location || 'Brak lokalizacji'}</span>}
-                                    </div>
-                                </div>
-                                {!isEditing && <a href={generateCalendarLink(training)} target="_blank" className="bg-white/10 p-2 rounded-full hover:bg-white/20 transition"><CalendarPlus size={20} /></a>}
-                            </div>
-                            <div className="mt-6 pt-4 border-t border-white/10 flex gap-4 text-sm">
-                                <div className="flex-1">
-                                    <label className="text-slate-300 block mb-1">Waga (kg)</label>
-                                    {isEditing ? <input type="number" step="0.1" value={training.weight || ''} onChange={(e) => onUpdateTraining(training.id, 'weight', e.target.value)} className="w-full bg-black/20 text-white rounded px-2 py-1 border border-white/10 outline-none" /> : <div>{training.weight || '--'} kg</div>}
-                                </div>
-                                <div className="flex-1">
-                                    <label className="text-slate-300 block mb-1">Status</label>
-                                    {isEditing ? (
-                                        <select 
-                                            value={isCompleted ? 'true' : 'false'} 
-                                            onChange={(e) => onUpdateTraining(training.id, 'isCompleted', e.target.value === 'true')} 
-                                            className="w-full bg-black/20 text-white rounded px-2 py-1 border border-white/10 outline-none"
-                                        >
-                                            <option value="false" className="text-slate-900">Zaplanowany</option>
-                                            <option value="true" className="text-slate-900">Ukończony</option>
-                                        </select>
-                                    ) : <div className="flex items-center">{isCompleted ? 'Ukończony' : 'Do zrobienia'}</div>}
-                                </div>
-                            </div>
-                        </Card>
-                        <div className={`bg-amber-50 border border-amber-100 rounded-lg p-4 text-sm flex gap-3 ${isEditing ? 'ring-2 ring-amber-200' : ''}`}>
-                            <div className="shrink-0 text-amber-600"><User size={20} /></div>
-                            <div className="w-full">
-                                <span className="font-bold block text-amber-800 mb-1">Notatka Trenera:</span>
-                                {isEditing ? <textarea value={training.coachNotes} placeholder="Wpisz cele..." onChange={(e) => onUpdateTraining(training.id, 'coachNotes', e.target.value)} className="w-full bg-white/50 border border-amber-200 rounded p-2 outline-none" rows="2" /> : training.coachNotes || 'Brak notatek'}
+
+                    <div className="p-4 space-y-4 max-w-md mx-auto">
+                        {/* Header Info */}
+                        <div className="py-2">
+                             {isEditing ? (
+                                <input type="date" value={training.date} onChange={(e) => onUpdateTraining(training.id, 'date', e.target.value)} className="text-2xl font-bold text-gray-900 bg-transparent border-b border-gray-200 w-full outline-none" />
+                            ) : (
+                                <h1 className="text-2xl font-bold text-gray-900 capitalize">{new Date(training.date).toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}</h1>
+                            )}
+                            
+                            <div className="flex items-center mt-2 text-gray-500 text-sm">
+                                <MapPin size={14} className="mr-1.5 text-blue-500" />
+                                {isEditing ? <input value={training.location} onChange={(e) => onUpdateTraining(training.id, 'location', e.target.value)} className="clean-input w-full text-sm" placeholder="Gdzie się wspinasz?" /> : <span>{training.location || 'Dodaj lokalizację'}</span>}
                             </div>
                         </div>
-                        <div className="space-y-4">
-                            <h3 className="font-bold text-slate-800 text-lg flex items-center"><Dumbbell className="mr-2 text-slate-400" size={20} /> Plan Treningowy</h3>
+
+                        {/* Status & Calendar */}
+                        <div className="flex gap-3">
+                             {isEditing ? (
+                                <select 
+                                    value={isCompleted ? 'true' : 'false'} 
+                                    onChange={(e) => onUpdateTraining(training.id, 'isCompleted', e.target.value === 'true')} 
+                                    className="flex-1 bg-gray-50 text-sm p-2 rounded-lg border border-gray-200 outline-none"
+                                >
+                                    <option value="false">Zaplanowany</option>
+                                    <option value="true">Ukończony</option>
+                                </select>
+                            ) : (
+                                <div className={`flex-1 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wide flex items-center justify-center border ${isCompleted ? 'bg-green-50 text-green-700 border-green-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
+                                    {isCompleted ? <><CheckCircle size={14} className="mr-1.5"/> Ukończony</> : 'Zaplanowany'}
+                                </div>
+                            )}
+                            {!isEditing && (
+                                <a href={generateCalendarLink(training)} target="_blank" className="w-10 flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition border border-blue-100">
+                                    <CalendarPlus size={18} />
+                                </a>
+                            )}
+                        </div>
+
+                        {/* Coach Notes */}
+                        <div className="bg-yellow-50/50 border border-yellow-100 rounded-xl p-3">
+                            <div className="flex items-start gap-2">
+                                <MessageSquare size={16} className="text-yellow-600 mt-0.5 shrink-0" />
+                                <div className="w-full">
+                                    <span className="text-[10px] font-bold text-yellow-600 uppercase mb-1 block">Notatka Trenera</span>
+                                    {isEditing ? <textarea value={training.coachNotes} placeholder="Wpisz cele..." onChange={(e) => onUpdateTraining(training.id, 'coachNotes', e.target.value)} className="w-full bg-white/50 border border-yellow-200/50 rounded p-2 text-sm outline-none" rows="2" /> : <p className="text-sm text-gray-700">{training.coachNotes || 'Brak uwag.'}</p>}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Exercises List (Compact) */}
+                        <div className="space-y-3 pt-2">
                             {training.exercises && training.exercises.map((ex, idx) => (
-                                <Card key={idx} className="p-4 relative">
-                                    {isEditing && <button onClick={() => onDeleteExercise(training.id, idx)} className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 z-20"><Trash size={16} /></button>}
-                                    <div className={`mb-2 ${isEditing ? 'pr-12' : ''}`}>
+                                <div key={idx} className="bg-white border border-gray-100 rounded-xl p-3 relative shadow-sm hover:border-blue-200 transition">
+                                    {isEditing && <button onClick={() => onDeleteExercise(training.id, idx)} className="absolute top-2 right-2 p-1.5 text-gray-300 hover:text-red-500 z-10"><Trash size={14} /></button>}
+                                    
+                                    <div className={isEditing ? 'pr-8 mb-2' : 'mb-1'}>
                                         {isEditing ? (
-                                            <select value={ex.exerciseId} onChange={(e) => onUpdateExercise(training.id, idx, 'exerciseId', e.target.value)} className="w-full font-bold text-slate-700 bg-transparent border-b border-slate-300 outline-none pb-1">
+                                            <select value={ex.exerciseId} onChange={(e) => onUpdateExercise(training.id, idx, 'exerciseId', e.target.value)} className="w-full text-sm font-bold text-gray-800 bg-transparent border-b border-gray-200 outline-none pb-1">
                                                 {exerciseLibrary.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             </select>
-                                        ) : <h4 className="font-bold text-slate-700">{exerciseLibrary.find(l => l.id === ex.exerciseId)?.name || 'Ćwiczenie'}</h4>}
+                                        ) : <h4 className="text-sm font-bold text-gray-800">{exerciseLibrary.find(l => l.id === ex.exerciseId)?.name || 'Ćwiczenie'}</h4>}
                                     </div>
-                                    <div className="mb-3">
-                                        {isEditing ? <textarea value={ex.description} onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm outline-none placeholder:text-slate-400" placeholder="Opis ćwiczenia..." /> : <div className="text-sm text-slate-600 italic bg-slate-50 p-2 rounded">{ex.description || 'Brak opisu'}</div>}
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-2 mb-3 text-center">
-                                        {['series', 'reps', 'load'].map(f => (
-                                            <div key={f}>
-                                                <span className="text-[9px] font-bold text-slate-400 uppercase">{f === 'load' ? 'Trudność' : f === 'series' ? 'Serie' : 'Powt.'}</span>
-                                                {isEditing ? <input type="text" value={ex[f]} onChange={(e) => onUpdateExercise(training.id, idx, f, e.target.value)} className="w-full text-center bg-slate-50 border border-slate-200 rounded p-1 text-sm outline-none" /> : <div className="font-mono font-bold text-slate-700">{ex[f]}</div>}
+
+                                    <div className="grid grid-cols-12 gap-3 items-start">
+                                        <div className="col-span-7">
+                                             {isEditing ? <textarea value={ex.description} onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded p-1.5 text-xs outline-none" rows="2" placeholder="Opis..." /> : <p className="text-xs text-gray-500 leading-relaxed">{ex.description}</p>}
+                                        </div>
+                                        <div className="col-span-5 space-y-1.5">
+                                            <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
+                                                <span className="text-gray-400">Plan:</span>
+                                                {isEditing ? (
+                                                    <div className="flex gap-1">
+                                                        <input value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} className="w-6 text-center bg-gray-50 rounded" />
+                                                        <span>x</span>
+                                                        <input value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} className="w-8 text-center bg-gray-50 rounded" />
+                                                    </div>
+                                                ) : <span className="font-mono font-medium text-gray-700">{ex.series}x{ex.reps}</span>}
                                             </div>
-                                        ))}
+                                            <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
+                                                <span className="text-gray-400">Trud:</span>
+                                                {isEditing ? <input value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} className="w-16 text-right bg-gray-50 rounded" /> : <span className="font-mono text-gray-700">{ex.load}</span>}
+                                            </div>
+                                            <div className="pt-1">
+                                                 {isEditing ? <input value={ex.actual} onChange={(e) => onUpdateExercise(training.id, idx, 'actual', e.target.value)} className="w-full text-xs p-1 border border-blue-200 rounded bg-blue-50 text-blue-800 outline-none" placeholder="Wynik..." /> : (ex.actual && <div className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded font-medium text-center">{ex.actual}</div>)}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <span className="text-[10px] font-bold text-blue-500 uppercase">Twój Wynik</span>
-                                        {isEditing ? <input value={ex.actual} onChange={(e) => onUpdateExercise(training.id, idx, 'actual', e.target.value)} className="w-full text-sm p-2 border border-blue-200 rounded bg-blue-50 outline-none" placeholder="Co udało się zrobić?" /> : <div className={`text-sm border-l-2 pl-2 ${ex.actual ? 'border-emerald-500' : 'border-slate-200 italic text-slate-400'}`}>{ex.actual || 'Brak wpisu'}</div>}
-                                    </div>
-                                </Card>
+                                </div>
                             ))}
-                            {isEditing && <button onClick={() => onAddExercise(training.id)} className="w-full py-3 border-2 border-dashed border-blue-200 rounded-xl text-blue-500 font-semibold flex items-center justify-center hover:bg-blue-50 transition"><Plus size={20} className="mr-2" /> Dodaj ćwiczenie</button>}
+                            {isEditing && <button onClick={() => onAddExercise(training.id)} className="w-full py-3 border border-dashed border-blue-200 rounded-xl text-blue-500 text-sm font-semibold flex items-center justify-center hover:bg-blue-50 transition"><Plus size={18} className="mr-2" /> Dodaj ćwiczenie</button>}
+                        </div>
+
+                        {/* Feedback */}
+                        <div className="pt-2">
+                             <span className="text-[10px] font-bold text-gray-400 uppercase mb-2 block flex items-center"><MessageSquare size={12} className="mr-1"/> Twoje odczucia</span>
+                            {isEditing ? <textarea value={training.feedback || ''} onChange={(e) => onUpdateTraining(training.id, 'feedback', e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none text-sm min-h-[80px]" placeholder="Jak poszło?" /> : <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm text-gray-600 italic">{training.feedback || 'Brak wpisu.'}</div>}
                         </div>
                     </div>
                 </div>
@@ -304,87 +349,85 @@
             const stats = trainings.filter(t => t.exercises && t.exercises.some(e => e.exerciseId === statExId)).sort((a, b) => new Date(b.date) - new Date(a.date));
 
             return (
-                <div className="p-4 pb-20 space-y-6 animate-fade-in">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center"><TrendingUp className="mr-2 text-blue-600" /> Postęp</h2>
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                        <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">Ćwiczenie</label>
-                        <select value={statExId} onChange={(e) => setStatExId(e.target.value)} className="w-full p-2.5 rounded-lg border border-slate-200 outline-none text-sm font-medium">{exerciseLibrary.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}</select>
+                <div className="p-4 pt-6 pb-24 animate-fade-in max-w-md mx-auto">
+                    <Header title="Twój Postęp" icon={TrendingUp} />
+                    
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Wybierz Ćwiczenie</label>
+                        <select value={statExId} onChange={(e) => setStatExId(e.target.value)} className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 outline-none text-sm font-medium text-gray-700">{exerciseLibrary.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}</select>
                     </div>
-                    {stats.length === 0 ? <div className="text-center py-10 text-slate-400">Brak danych.</div> : stats.map(t => {
+
+                    <div className="space-y-3">
+                    {stats.length === 0 ? <div className="text-center py-10 text-gray-300 text-sm">Brak danych dla tego ćwiczenia.</div> : stats.map(t => {
                         const ex = t.exercises.find(e => e.exerciseId === statExId);
                         return (
-                            <Card key={t.id} className="p-3 border-l-4 border-l-blue-500">
-                                <div className="flex justify-between text-xs font-bold text-slate-500 mb-2"><span>{new Date(t.date).toLocaleDateString('pl-PL')}</span>{t.isCompleted ? <span className="text-emerald-600">Zrealizowane</span> : <span className="text-amber-600">Plan</span>}</div>
-                                <div className="flex items-baseline gap-2">
-                                    <div className="text-lg font-bold text-slate-800">{ex.series} x {ex.reps}</div>
-                                    <div className="ml-auto bg-slate-100 px-2 py-1 rounded text-sm font-mono">{ex.load}</div>
+                            <div key={t.id} className="bg-white border-l-2 border-blue-500 pl-4 py-3 pr-3 rounded-r-xl shadow-sm flex justify-between items-center">
+                                <div>
+                                    <div className="text-xs font-bold text-gray-400 mb-0.5">{new Date(t.date).toLocaleDateString('pl-PL')}</div>
+                                    <div className="text-sm font-bold text-gray-800">{ex.series} serii x {ex.reps}</div>
                                 </div>
-                            </Card>
+                                <div className="bg-gray-100 px-3 py-1 rounded text-xs font-mono font-medium text-gray-600">{ex.load}</div>
+                            </div>
                         );
                     })}
+                    </div>
                 </div>
             );
         }
 
-        function ExercisesView({ library, onUpdate, onAdd, onDelete }) {
+        function ExercisesView({ library, onUpdate, onAdd, onDelete, onFinishEditing }) {
             const [isEditing, setIsEditing] = useState(false);
 
+            const handleToggleEdit = () => {
+                if (isEditing) {
+                    onFinishEditing(); // Przekierowanie po zakończeniu
+                }
+                setIsEditing(!isEditing);
+            }
+
             return (
-                <div className="p-4 pt-6 space-y-4 pb-20 animate-fade-in">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold text-slate-800 flex items-center"><ClipboardList className="mr-2 text-blue-600" /> Baza Ćwiczeń</h2>
-                        <button onClick={() => setIsEditing(!isEditing)} className={`text-sm font-medium px-4 py-1.5 rounded-full transition ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>{isEditing ? 'Zakończ' : 'Edytuj'}</button>
-                    </div>
+                <div className="p-4 pt-6 pb-24 animate-fade-in max-w-md mx-auto">
+                    <Header 
+                        title="Baza Ćwiczeń" 
+                        icon={ClipboardList} 
+                        action={<button onClick={handleToggleEdit} className={`text-xs font-bold px-4 py-2 rounded-full transition uppercase tracking-wide ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>{isEditing ? 'Zakończ' : 'Edytuj'}</button>}
+                    />
                     
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {library.map((ex, idx) => (
                             <Card key={ex.id} className="p-4 relative">
                                 {isEditing && (
-                                    <button 
-                                        onClick={() => onDelete(ex.id)}
-                                        className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 transition z-10"
-                                    >
-                                        <Trash size={16} />
-                                    </button>
+                                    <button onClick={() => onDelete(ex.id)} className="absolute top-3 right-3 p-1.5 text-gray-300 hover:text-red-500 transition z-10"><Trash size={16} /></button>
                                 )}
                                 <div className={isEditing ? 'pr-8 space-y-3' : 'space-y-1'}>
                                     {isEditing ? (
                                         <>
                                             <div>
-                                                <label className="text-[10px] uppercase font-bold text-slate-400">Nazwa</label>
-                                                <input value={ex.name} onChange={(e) => onUpdate(ex.id, 'name', e.target.value)} className="w-full text-sm font-bold border-b border-slate-200 outline-none focus:border-blue-500 pb-1" />
+                                                <label className="text-[9px] uppercase font-bold text-gray-400">Nazwa</label>
+                                                <input value={ex.name} onChange={(e) => onUpdate(ex.id, 'name', e.target.value)} className="clean-input w-full text-sm font-bold pb-1" />
                                             </div>
                                             <div>
-                                                <label className="text-[10px] uppercase font-bold text-slate-400">Kategoria</label>
-                                                <input value={ex.category} onChange={(e) => onUpdate(ex.id, 'category', e.target.value)} className="w-full text-xs border-b border-slate-200 outline-none focus:border-blue-500 pb-1" />
+                                                <label className="text-[9px] uppercase font-bold text-gray-400">Kategoria</label>
+                                                <input value={ex.category} onChange={(e) => onUpdate(ex.id, 'category', e.target.value)} className="clean-input w-full text-xs pb-1" />
                                             </div>
                                             <div>
-                                                <label className="text-[10px] uppercase font-bold text-slate-400">Domyślny Opis</label>
-                                                <textarea value={ex.defaultDescription} onChange={(e) => onUpdate(ex.id, 'defaultDescription', e.target.value)} className="w-full text-xs border border-slate-200 rounded p-1.5 outline-none focus:border-blue-500" rows="2" />
+                                                <label className="text-[9px] uppercase font-bold text-gray-400">Opis domyślny</label>
+                                                <textarea value={ex.defaultDescription} onChange={(e) => onUpdate(ex.id, 'defaultDescription', e.target.value)} className="w-full text-xs border border-gray-200 rounded p-2 outline-none" rows="2" />
                                             </div>
                                             <div className="grid grid-cols-3 gap-2">
-                                                <div>
-                                                    <label className="text-[9px] uppercase font-bold text-slate-400">Domyślne Serie</label>
-                                                    <input type="number" value={ex.defaultSeries} onChange={(e) => onUpdate(ex.id, 'defaultSeries', parseInt(e.target.value))} className="w-full text-center text-xs border border-slate-200 rounded p-1" />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[9px] uppercase font-bold text-slate-400">Domyślne Powt.</label>
-                                                    <input value={ex.defaultReps} onChange={(e) => onUpdate(ex.id, 'defaultReps', e.target.value)} className="w-full text-center text-xs border border-slate-200 rounded p-1" />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[9px] uppercase font-bold text-slate-400">Domyślne Obciąż.</label>
-                                                    <input value={ex.defaultLoad} onChange={(e) => onUpdate(ex.id, 'defaultLoad', e.target.value)} className="w-full text-center text-xs border border-slate-200 rounded p-1" />
-                                                </div>
+                                                <div><label className="text-[9px] uppercase font-bold text-gray-400">Serie</label><input type="number" value={ex.defaultSeries} onChange={(e) => onUpdate(ex.id, 'defaultSeries', parseInt(e.target.value))} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5" /></div>
+                                                <div><label className="text-[9px] uppercase font-bold text-gray-400">Powt.</label><input value={ex.defaultReps} onChange={(e) => onUpdate(ex.id, 'defaultReps', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5" /></div>
+                                                <div><label className="text-[9px] uppercase font-bold text-gray-400">Trud.</label><input value={ex.defaultLoad} onChange={(e) => onUpdate(ex.id, 'defaultLoad', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5" /></div>
                                             </div>
                                         </>
                                     ) : (
                                         <>
                                             <div className="flex justify-between items-start">
-                                                <h3 className="font-bold text-slate-700">{ex.name}</h3>
-                                                <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{ex.category}</span>
+                                                <h3 className="font-bold text-gray-800 text-sm">{ex.name}</h3>
+                                                <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{ex.category}</span>
                                             </div>
-                                            <p className="text-xs text-slate-500 italic">{ex.defaultDescription || 'Brak opisu'}</p>
-                                            <div className="text-xs text-slate-400 font-mono pt-1">
+                                            <p className="text-xs text-gray-500 leading-relaxed">{ex.defaultDescription || 'Brak opisu'}</p>
+                                            <div className="text-[10px] text-gray-400 font-mono mt-1 pt-1 border-t border-gray-50">
                                                 Domyślnie: {ex.defaultSeries}x{ex.defaultReps} | {ex.defaultLoad}
                                             </div>
                                         </>
@@ -394,8 +437,8 @@
                         ))}
 
                         {isEditing && (
-                            <button onClick={onAdd} className="w-full py-3 border-2 border-dashed border-blue-200 rounded-xl text-blue-500 font-semibold flex items-center justify-center hover:bg-blue-50 transition">
-                                <Plus size={20} className="mr-2" /> Dodaj Nowe Ćwiczenie
+                            <button onClick={onAdd} className="w-full py-3 border border-dashed border-blue-200 rounded-xl text-blue-500 font-semibold text-sm flex items-center justify-center hover:bg-blue-50 transition">
+                                <Plus size={18} className="mr-2" /> Dodaj Nowe Ćwiczenie
                             </button>
                         )}
                     </div>
@@ -422,7 +465,6 @@
                 let unsubSettings = null;
 
                 const initSync = async () => {
-                    // Czekamy na załadowanie biblioteki
                     let attempts = 0;
                     while (!window.firestoreOps && attempts < 20) { await new Promise(r => setTimeout(r, 100)); attempts++; }
                     if (!window.firestoreOps) return;
@@ -438,14 +480,12 @@
                         setUser(u);
                         setIsOnline(!!u);
                         if (u) {
-                            // Sync Trainings
                             const trainingsRef = collection(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings');
                             unsubTrainings = onSnapshot(query(trainingsRef), (snap) => {
                                 const data = snap.docs.map(d => d.data());
                                 setTrainings(data.sort((a, b) => new Date(b.date) - new Date(a.date)));
                             });
 
-                            // Sync Settings (Exercises)
                             const settingsRef = doc(window.db, 'artifacts', window.appId, 'public', 'data', 'settings', 'exercises');
                             unsubSettings = onSnapshot(settingsRef, (snap) => {
                                 if (snap.exists()) {
@@ -463,8 +503,7 @@
                 };
             }, []);
 
-            // --- FUNKCJE ZAPISU (Firebase) ---
-
+            // --- ZAPIS ---
             const saveTrainingToDb = useCallback((training) => {
                 if (!user || !window.firestoreOps) return;
                 if (saveTimeout.current) clearTimeout(saveTimeout.current);
@@ -484,8 +523,7 @@
                 } catch (e) { console.error("Save lib error:", e); }
             }, [user]);
 
-            // --- AKCJE ---
-
+            // --- LOGIKA ---
             const handleUpdateT = (id, field, value) => {
                 setTrainings(prev => {
                     const next = prev.map(t => t.id === id ? { ...t, [field]: value } : t);
@@ -566,7 +604,7 @@
                     id: newId, 
                     date: new Date().toISOString().split('T')[0], 
                     location: '', 
-                    weight: null, 
+                    // weight usunięte
                     isCompleted: false, 
                     feedback: '', 
                     coachNotes: '', 
@@ -580,7 +618,6 @@
                     }] 
                 };
                 
-                // Zapisz do bazy i czekaj na potwierdzenie
                 if (user && window.firestoreOps) {
                     const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', newId.toString());
                     await window.firestoreOps.setDoc(ref, newT);
@@ -591,7 +628,6 @@
                 setIsEditing(true);
             };
 
-            // Lib Actions
             const handleUpdateLib = (id, field, value) => {
                 const newLib = exerciseLibrary.map(ex => ex.id === id ? { ...ex, [field]: value } : ex);
                 setExerciseLibrary(newLib);
@@ -623,11 +659,9 @@
             const selected = trainings.find(t => t.id === selectedId);
 
             return (
-                <div className="max-w-md mx-auto min-h-screen bg-slate-50 shadow-2xl relative overflow-x-hidden">
-                    {/* Status Indicator */}
-                    <div className="absolute top-2 right-2 z-50 pointer-events-none">
-                        <div className={`status-dot ${isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300'}`} title={isOnline ? 'Online' : 'Offline'}></div>
-                    </div>
+                <div className="max-w-md mx-auto min-h-screen relative overflow-x-hidden">
+                    {/* Status Bar (Thin Line) */}
+                    <div className={`fixed top-0 left-0 w-full h-1 z-[100] transition-colors duration-500 ${isOnline ? 'bg-emerald-400' : 'bg-red-400'}`}></div>
 
                     {selected ? (
                         <TrainingDetailView 
@@ -651,14 +685,15 @@
                             onUpdate={handleUpdateLib} 
                             onAdd={handleAddLib} 
                             onDelete={handleDeleteLib} 
+                            onFinishEditing={() => setActiveTab('trainings')}
                         />
                     )}
                     
                     {!selected && (
-                        <div className="fixed bottom-0 max-w-md w-full bg-white/90 backdrop-blur-lg border-t border-slate-200 flex justify-around py-2 z-50">
-                            <button onClick={() => setActiveTab('trainings')} className={`flex flex-col items-center p-2 rounded-xl w-24 transition ${activeTab === 'trainings' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400'}`}><Calendar size={22} /><span className="text-[10px] font-bold mt-1 uppercase">Rozpiska</span></button>
-                            <button onClick={() => setActiveTab('analytics')} className={`flex flex-col items-center p-2 rounded-xl w-24 transition ${activeTab === 'analytics' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400'}`}><TrendingUp size={22} /><span className="text-[10px] font-bold mt-1 uppercase">Postęp</span></button>
-                            <button onClick={() => setActiveTab('exercises')} className={`flex flex-col items-center p-2 rounded-xl w-24 transition ${activeTab === 'exercises' ? 'text-blue-600 bg-blue-50/50' : 'text-slate-400'}`}><ClipboardList size={22} /><span className="text-[10px] font-bold mt-1 uppercase">Zadania</span></button>
+                        <div className="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-gray-100 flex justify-around py-3 z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.02)]">
+                            <button onClick={() => setActiveTab('trainings')} className={`flex flex-col items-center p-2 rounded-xl w-24 transition ${activeTab === 'trainings' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}><Calendar size={20} className="mb-1" /><span className="text-[9px] font-bold uppercase tracking-wider">Rozpiska</span></button>
+                            <button onClick={() => setActiveTab('analytics')} className={`flex flex-col items-center p-2 rounded-xl w-24 transition ${activeTab === 'analytics' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}><TrendingUp size={20} className="mb-1" /><span className="text-[9px] font-bold uppercase tracking-wider">Postęp</span></button>
+                            <button onClick={() => setActiveTab('exercises')} className={`flex flex-col items-center p-2 rounded-xl w-24 transition ${activeTab === 'exercises' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}><ClipboardList size={20} className="mb-1" /><span className="text-[9px] font-bold uppercase tracking-wider">Zadania</span></button>
                         </div>
                     )}
                 </div>
