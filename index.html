@@ -73,12 +73,12 @@
             // KONFIGURACJA UŻYTKOWNIKA
             // ------------------------------------------------------------------
             const userConfig = {
-              apiKey: "AIzaSyAgIGDQaKWHcBiEUwVavMOpj5TX5n81Bnw",
-              authDomain: "climblog-7432b.firebaseapp.com",
-              projectId: "climblog-7432b",
-              storageBucket: "climblog-7432b.firebasestorage.app",
-              messagingSenderId: "155094312417",
-              appId: "1:155094312417:web:19e35e3699737be22cdea0"
+                  apiKey: "AIzaSyAgIGDQaKWHcBiEUwVavMOpj5TX5n81Bnw",
+                  authDomain: "climblog-7432b.firebaseapp.com",
+                  projectId: "climblog-7432b",
+                  storageBucket: "climblog-7432b.firebasestorage.app",
+                  messagingSenderId: "155094312417",
+                  appId: "1:155094312417:web:19e35e3699737be22cdea0"
             }; 
 
             const firebaseConfig = (userConfig.apiKey !== "TU_WKLEJ_API_KEY") ? userConfig : (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null);
@@ -230,13 +230,6 @@
             if (!training) return null;
             const isCompleted = !!training.isCompleted;
 
-            const getStatusColor = (status) => {
-                if (status === 'done') return 'text-emerald-500 bg-emerald-50 border-emerald-200';
-                if (status === 'attention') return 'text-amber-500 bg-amber-50 border-amber-200';
-                if (status === 'skipped') return 'text-red-500 bg-red-50 border-red-200';
-                return 'text-gray-300 bg-gray-50 border-gray-100';
-            };
-
             return (
                 <div className="pb-24 animate-fade-in bg-white min-h-screen">
                     {/* Compact Top Bar */}
@@ -255,12 +248,21 @@
 
                     <div className="p-4 space-y-4 max-w-md mx-auto">
                         {/* Header Info */}
-                        <div className="py-2">
-                             {isEditing ? (
-                                <input type="date" value={training.date} onChange={(e) => onUpdateTraining(training.id, 'date', e.target.value)} className="text-2xl font-bold text-gray-900 bg-transparent border-b border-gray-200 w-full outline-none" />
-                            ) : (
-                                <h1 className="text-2xl font-bold text-gray-900 capitalize">{new Date(training.date).toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}</h1>
-                            )}
+                        <div>
+                             <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                    {isEditing ? (
+                                        <input type="date" value={training.date} onChange={(e) => onUpdateTraining(training.id, 'date', e.target.value)} className="text-2xl font-bold text-gray-900 bg-transparent border-b border-gray-200 w-full outline-none" />
+                                    ) : (
+                                        <h1 className="text-2xl font-bold text-gray-900 capitalize">{new Date(training.date).toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}</h1>
+                                    )}
+                                </div>
+                                {!isEditing && (
+                                    <a href={generateCalendarLink(training)} target="_blank" className="p-2 text-gray-400 hover:text-gray-600 transition">
+                                        <CalendarPlus size={20} />
+                                    </a>
+                                )}
+                            </div>
                             
                             <div className="flex items-center mt-2 text-gray-500 text-sm">
                                 <MapPin size={14} className="mr-1.5 text-blue-500" />
@@ -268,27 +270,22 @@
                             </div>
                         </div>
 
-                        {/* Status & Calendar */}
-                        <div className="flex gap-3">
-                             {isEditing ? (
-                                <select 
-                                    value={isCompleted ? 'true' : 'false'} 
-                                    onChange={(e) => onUpdateTraining(training.id, 'isCompleted', e.target.value === 'true')} 
-                                    className="flex-1 bg-gray-50 text-sm p-2 rounded-lg border border-gray-200 outline-none"
-                                >
-                                    <option value="false">Zaplanowany</option>
-                                    <option value="true">Ukończony</option>
-                                </select>
-                            ) : (
-                                <div className={`flex-1 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wide flex items-center justify-center border ${isCompleted ? 'bg-green-50 text-green-700 border-green-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
-                                    {isCompleted ? <><CheckCircle size={14} className="mr-1.5"/> Ukończony</> : 'Zaplanowany'}
-                                </div>
-                            )}
-                            {!isEditing && (
-                                <a href={generateCalendarLink(training)} target="_blank" className="w-10 flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition border border-blue-100">
-                                    <CalendarPlus size={18} />
-                                </a>
-                            )}
+                        {/* Status Switcher (Now toggle style like list view) */}
+                         <div className="bg-gray-100 p-1 rounded-xl flex">
+                            <button 
+                                onClick={() => isEditing && onUpdateTraining(training.id, 'isCompleted', false)} 
+                                disabled={!isEditing}
+                                className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wide rounded-lg transition ${!isCompleted ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400'} ${isEditing ? 'cursor-pointer hover:text-gray-600' : 'cursor-default'}`}
+                            >
+                                Zaplanowany
+                            </button>
+                            <button 
+                                onClick={() => isEditing && onUpdateTraining(training.id, 'isCompleted', true)}
+                                disabled={!isEditing} 
+                                className={`flex-1 py-1.5 text-xs font-bold uppercase tracking-wide rounded-lg transition ${isCompleted ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-400'} ${isEditing ? 'cursor-pointer hover:text-gray-600' : 'cursor-default'}`}
+                            >
+                                Ukończony
+                            </button>
                         </div>
 
                         {/* Coach Notes */}
@@ -339,16 +336,16 @@
                                     </div>
 
                                     {/* STATUS BUTTONS ROW */}
-                                    <div className="flex items-stretch gap-2 mt-3 pt-3 border-t border-gray-50">
-                                        <div className="flex gap-1">
-                                            <button onClick={() => onUpdateExercise(training.id, idx, 'status', 'done')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${ex.status === 'done' ? 'bg-emerald-500 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-emerald-50 hover:text-emerald-400'}`}>
-                                                <Check size={20} />
+                                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-50">
+                                        <div className="flex gap-1 shrink-0">
+                                            <button onClick={() => onUpdateExercise(training.id, idx, 'status', 'done')} className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${ex.status === 'done' ? 'bg-emerald-500 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-emerald-50 hover:text-emerald-400'}`}>
+                                                <Check size={16} />
                                             </button>
-                                            <button onClick={() => onUpdateExercise(training.id, idx, 'status', 'attention')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${ex.status === 'attention' ? 'bg-amber-400 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-amber-50 hover:text-amber-400'}`}>
-                                                <AlertCircle size={20} />
+                                            <button onClick={() => onUpdateExercise(training.id, idx, 'status', 'attention')} className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${ex.status === 'attention' ? 'bg-amber-400 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-amber-50 hover:text-amber-400'}`}>
+                                                <AlertCircle size={16} />
                                             </button>
-                                            <button onClick={() => onUpdateExercise(training.id, idx, 'status', 'skipped')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${ex.status === 'skipped' ? 'bg-red-500 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-red-50 hover:text-red-400'}`}>
-                                                <X size={20} />
+                                            <button onClick={() => onUpdateExercise(training.id, idx, 'status', 'skipped')} className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${ex.status === 'skipped' ? 'bg-red-500 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-red-50 hover:text-red-400'}`}>
+                                                <X size={16} />
                                             </button>
                                         </div>
                                         {/* WIDER FEEDBACK AREA */}
@@ -356,7 +353,7 @@
                                              <input 
                                                 value={ex.actual || ''} 
                                                 onChange={(e) => onUpdateExercise(training.id, idx, 'actual', e.target.value)} 
-                                                className="w-full h-10 px-3 border border-gray-200 rounded-lg bg-gray-50 text-sm outline-none focus:border-blue-400 focus:bg-white transition" 
+                                                className="w-full h-8 px-2 border border-gray-200 rounded-lg bg-gray-50 text-xs outline-none focus:border-blue-400 focus:bg-white transition" 
                                                 placeholder="Wynik / Feedback..." 
                                              />
                                         </div>
@@ -369,7 +366,7 @@
                         {/* General Feedback */}
                         <div className="pt-2">
                              <span className="text-[10px] font-bold text-gray-400 uppercase mb-2 block flex items-center"><MessageSquare size={12} className="mr-1"/> Podsumowanie treningu</span>
-                            {isEditing ? <textarea value={training.feedback || ''} onChange={(e) => onUpdateTraining(training.id, 'feedback', e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none text-sm min-h-[80px]" placeholder="Jak poszło?" /> : <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm text-gray-600 italic">{training.feedback || 'Brak wpisu.'}</div>}
+                            {isEditing ? <textarea value={training.feedback || ''} onChange={(e) => onUpdateTraining(training.id, 'feedback', e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none text-xs min-h-[60px]" placeholder="Jak poszło?" /> : <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs text-gray-600 italic">{training.feedback || 'Brak wpisu.'}</div>}
                         </div>
                     </div>
                 </div>
@@ -381,10 +378,10 @@
             const stats = trainings.filter(t => t.exercises && t.exercises.some(e => e.exerciseId === statExId)).sort((a, b) => new Date(b.date) - new Date(a.date));
 
             const getStatusIcon = (status) => {
-                 if (status === 'done') return <Check size={14} className="text-emerald-500" />;
-                 if (status === 'attention') return <AlertCircle size={14} className="text-amber-500" />;
-                 if (status === 'skipped') return <X size={14} className="text-red-500" />;
-                 return <div className="w-3.5 h-3.5 rounded-full bg-gray-200"></div>;
+                 if (status === 'done') return <Check size={12} className="text-emerald-500" />;
+                 if (status === 'attention') return <AlertCircle size={12} className="text-amber-500" />;
+                 if (status === 'skipped') return <X size={12} className="text-red-500" />;
+                 return <div className="w-3 h-3 rounded-full bg-gray-200"></div>;
             };
 
             return (
@@ -393,22 +390,23 @@
                     
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
                         <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Wybierz Ćwiczenie</label>
-                        <select value={statExId} onChange={(e) => setStatExId(e.target.value)} className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 outline-none text-sm font-bold text-gray-700">{exerciseLibrary.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}</select>
+                        <select value={statExId} onChange={(e) => setStatExId(e.target.value)} className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 outline-none text-sm text-gray-700">{exerciseLibrary.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}</select>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                     {stats.length === 0 ? <div className="text-center py-10 text-gray-300 text-sm">Brak danych dla tego ćwiczenia.</div> : stats.map(t => {
                         const ex = t.exercises.find(e => e.exerciseId === statExId);
                         return (
-                            <div key={t.id} className="bg-white border-l-4 border-blue-500 pl-4 py-3 pr-3 rounded-r-xl shadow-sm flex justify-between items-center">
-                                <div>
-                                    <div className="text-xs font-bold text-gray-400 mb-0.5">{new Date(t.date).toLocaleDateString('pl-PL')}</div>
-                                    <div className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                            <div key={t.id} className="bg-white border-l-4 border-blue-500 pl-3 py-2 pr-3 rounded-r-lg shadow-sm flex justify-between items-center h-12">
+                                <div className="flex items-center gap-3">
+                                    <div className="text-[10px] text-gray-400 w-16">{new Date(t.date).toLocaleDateString('pl-PL')}</div>
+                                    <div title={t.isCompleted ? "Ukończony" : "Zaplanowany"} className={`w-2 h-2 rounded-full ${t.isCompleted ? 'bg-emerald-400' : 'bg-gray-300'}`}></div>
+                                    <div className="text-xs text-gray-700 flex items-center gap-2">
                                         {getStatusIcon(ex.status)}
-                                        {ex.series} serii x {ex.reps}
+                                        {ex.series}x{ex.reps}
                                     </div>
                                 </div>
-                                <div className="bg-gray-100 px-3 py-1 rounded text-xs font-bold text-gray-700">{ex.load}</div>
+                                <div className="text-xs text-gray-600 bg-gray-50 px-2 py-0.5 rounded">{ex.load}</div>
                             </div>
                         );
                     })}
@@ -753,4 +751,3 @@
     </script>
 </body>
 </html>
-
