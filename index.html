@@ -16,7 +16,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
-        body { background-color: #ffffff; color: #1f2937; }
+        body { background-color: #ffffff; color: #1f2937; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
@@ -25,15 +25,16 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in {
-            animation: fadeIn 0.4s ease-out forwards;
+            animation: fadeIn 0.3s ease-out forwards;
         }
         
-        /* Custom inputs for cleaner look */
         .clean-input {
             background: transparent;
             border-bottom: 1px solid #e5e7eb;
             outline: none;
             transition: border-color 0.2s;
+            border-radius: 0;
+            padding-bottom: 2px;
         }
         .clean-input:focus {
             border-color: #3b82f6;
@@ -69,23 +70,17 @@
 
         try {
             // ------------------------------------------------------------------
-            // KONFIGURACJA UŻYTKOWNIKA (BEZPIECZEŃSTWO)
+            // KONFIGURACJA UŻYTKOWNIKA
             // ------------------------------------------------------------------
-            // 1. Wejdź na https://console.firebase.google.com/
-            // 2. Skopiuj konfigurację ze swojego projektu (Project Settings -> General)
-            // 3. Wklej poniżej zamiast pustych cudzysłowów
-            // ------------------------------------------------------------------
-            
             const userConfig = {
-                apiKey: "AIzaSyAgIGDQaKWHcBiEUwVavMOpj5TX5n81Bnw",
-                authDomain: "climblog-7432b.firebaseapp.com",
-                projectId: "climblog-7432b",
-                storageBucket: "climblog-7432b.firebasestorage.app",
-                messagingSenderId: "155094312417",
-                appId: "1:155094312417:web:19e35e3699737be22cdea0"
+                apiKey: "TU_WKLEJ_API_KEY",
+                authDomain: "TU_WKLEJ_AUTH_DOMAIN",
+                projectId: "TU_WKLEJ_PROJECT_ID",
+                storageBucket: "TU_WKLEJ_STORAGE_BUCKET",
+                messagingSenderId: "TU_WKLEJ_SENDER_ID",
+                appId: "TU_WKLEJ_APP_ID"
             }; 
 
-            // Fallback dla środowiska Canvas (nie dotyczy Twojego hostingu)
             const firebaseConfig = (userConfig.apiKey !== "TU_WKLEJ_API_KEY") ? userConfig : (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null);
             const appId = typeof __app_id !== 'undefined' ? __app_id : 'climblog-production';
 
@@ -97,7 +92,7 @@
                 window.firestoreOps = { collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocs, writeBatch, signInAnonymously, signInWithCustomToken };
                 console.log("Firebase initialized.");
             } else {
-                console.warn("Brak konfiguracji Firebase. Uzupełnij obiekt userConfig w kodzie.");
+                console.warn("Brak konfiguracji Firebase. Uzupełnij userConfig.");
             }
         } catch (e) {
             console.error("Firebase init failed:", e);
@@ -109,7 +104,7 @@
         const { useState, useEffect, useRef, useCallback } = React;
 
         // --- IKONY SVG ---
-        function IconBase({ children, size = 24, className = "" }) {
+        function IconBase({ children, size = 20, className = "" }) {
             return (
                 <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
             );
@@ -127,6 +122,10 @@
         const Trash = (p) => <IconBase {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></IconBase>;
         const ClipboardList = (p) => <IconBase {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
         const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
+        const Pencil = (p) => <IconBase {...p}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></IconBase>;
+        const Check = (p) => <IconBase {...p}><polyline points="20 6 9 17 4 12"/></IconBase>;
+        const AlertCircle = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></IconBase>;
+        const X = (p) => <IconBase {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>;
 
         // --- KOMPONENTY UI ---
         function Card({ children, className = "" }) {
@@ -212,9 +211,9 @@
                                     </div>
                                     <div className="mt-3 space-y-1 pl-1 border-l-2 border-gray-100 group-hover:border-blue-100 transition">
                                         {t.exercises && t.exercises.slice(0, 2).map((ex, idx) => (
-                                            <div key={idx} className="text-xs text-gray-500 flex justify-between">
+                                            <div key={idx} className="text-xs text-gray-500 flex justify-between items-center">
                                                 <span>{exerciseLibrary.find(e => e.id === ex.exerciseId)?.name || 'Ćwiczenie'}</span>
-                                                <span className="font-mono text-gray-400">{ex.series}x{ex.reps}</span>
+                                                <span className="font-bold text-gray-400">{ex.series}x{ex.reps}</span>
                                             </div>
                                         ))}
                                         {t.exercises && t.exercises.length > 2 && <div className="text-[10px] text-gray-400 pt-1">+ {t.exercises.length - 2} więcej</div>}
@@ -231,14 +230,26 @@
             if (!training) return null;
             const isCompleted = !!training.isCompleted;
 
+            const getStatusColor = (status) => {
+                if (status === 'done') return 'text-emerald-500 bg-emerald-50 border-emerald-200';
+                if (status === 'attention') return 'text-amber-500 bg-amber-50 border-amber-200';
+                if (status === 'skipped') return 'text-red-500 bg-red-50 border-red-200';
+                return 'text-gray-300 bg-gray-50 border-gray-100';
+            };
+
             return (
                 <div className="pb-24 animate-fade-in bg-white min-h-screen">
                     {/* Compact Top Bar */}
                     <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 border-b border-gray-100 px-4 py-3 flex items-center justify-between">
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-800 flex items-center text-sm font-medium transition"><ChevronRight className="rotate-180 mr-1" size={18} /> Wróć</button>
-                        <div className="flex items-center gap-2">
-                            {isEditing && <button onClick={() => onDeleteTraining(training.id)} className="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-50 rounded-full transition"><Trash size={16} /></button>}
-                            <button onClick={onToggleEdit} className={`text-xs font-bold px-4 py-2 rounded-full transition uppercase tracking-wider ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>{isEditing ? 'Gotowe' : 'Edytuj'}</button>
+                        <div className="flex items-center gap-3">
+                             {/* Delete available ALWAYS now */}
+                             <button onClick={() => onDeleteTraining(training.id)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition"><Trash size={18} /></button>
+                             
+                             {/* Pencil Edit Icon */}
+                            <button onClick={onToggleEdit} className={`w-8 h-8 flex items-center justify-center rounded-full transition ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}>
+                                {isEditing ? <Check size={18} /> : <Pencil size={18} />}
+                            </button>
                         </div>
                     </div>
 
@@ -291,13 +302,13 @@
                             </div>
                         </div>
 
-                        {/* Exercises List (Compact) */}
-                        <div className="space-y-3 pt-2">
+                        {/* Exercises List */}
+                        <div className="space-y-4 pt-2">
                             {training.exercises && training.exercises.map((ex, idx) => (
-                                <div key={idx} className="bg-white border border-gray-100 rounded-xl p-3 relative shadow-sm hover:border-blue-200 transition">
-                                    {isEditing && <button onClick={() => onDeleteExercise(training.id, idx)} className="absolute top-2 right-2 p-1.5 text-gray-300 hover:text-red-500 z-10"><Trash size={14} /></button>}
+                                <div key={idx} className="bg-white border border-gray-100 rounded-xl p-4 relative shadow-sm hover:border-blue-200 transition">
+                                    {isEditing && <button onClick={() => onDeleteExercise(training.id, idx)} className="absolute top-3 right-3 p-1.5 text-gray-300 hover:text-red-500 z-10"><Trash size={16} /></button>}
                                     
-                                    <div className={isEditing ? 'pr-8 mb-2' : 'mb-1'}>
+                                    <div className={isEditing ? 'pr-8 mb-2' : 'mb-3'}>
                                         {isEditing ? (
                                             <select value={ex.exerciseId} onChange={(e) => onUpdateExercise(training.id, idx, 'exerciseId', e.target.value)} className="w-full text-sm font-bold text-gray-800 bg-transparent border-b border-gray-200 outline-none pb-1">
                                                 {exerciseLibrary.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
@@ -305,28 +316,49 @@
                                         ) : <h4 className="text-sm font-bold text-gray-800">{exerciseLibrary.find(l => l.id === ex.exerciseId)?.name || 'Ćwiczenie'}</h4>}
                                     </div>
 
-                                    <div className="grid grid-cols-12 gap-3 items-start">
+                                    <div className="grid grid-cols-12 gap-3 items-start mb-3">
                                         <div className="col-span-7">
                                              {isEditing ? <textarea value={ex.description} onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded p-1.5 text-xs outline-none" rows="2" placeholder="Opis..." /> : <p className="text-xs text-gray-500 leading-relaxed">{ex.description}</p>}
                                         </div>
-                                        <div className="col-span-5 space-y-1.5">
+                                        <div className="col-span-5 space-y-2">
                                             <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
                                                 <span className="text-gray-400">Plan:</span>
                                                 {isEditing ? (
                                                     <div className="flex gap-1">
-                                                        <input value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} className="w-6 text-center bg-gray-50 rounded" />
+                                                        <input value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} className="w-6 text-center bg-gray-50 rounded font-bold text-gray-600" />
                                                         <span>x</span>
-                                                        <input value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} className="w-8 text-center bg-gray-50 rounded" />
+                                                        <input value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} className="w-8 text-center bg-gray-50 rounded font-bold text-gray-600" />
                                                     </div>
-                                                ) : <span className="font-mono font-medium text-gray-700">{ex.series}x{ex.reps}</span>}
+                                                ) : <span className="font-bold text-gray-700">{ex.series}x{ex.reps}</span>}
                                             </div>
                                             <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
                                                 <span className="text-gray-400">Trud:</span>
-                                                {isEditing ? <input value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} className="w-16 text-right bg-gray-50 rounded" /> : <span className="font-mono text-gray-700">{ex.load}</span>}
+                                                {isEditing ? <input value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} className="w-16 text-right bg-gray-50 rounded font-bold text-gray-600" /> : <span className="font-bold text-gray-700">{ex.load}</span>}
                                             </div>
-                                            <div className="pt-1">
-                                                 {isEditing ? <input value={ex.actual} onChange={(e) => onUpdateExercise(training.id, idx, 'actual', e.target.value)} className="w-full text-xs p-1 border border-blue-200 rounded bg-blue-50 text-blue-800 outline-none" placeholder="Wynik..." /> : (ex.actual && <div className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded font-medium text-center">{ex.actual}</div>)}
-                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* STATUS BUTTONS ROW */}
+                                    <div className="flex items-stretch gap-2 mt-3 pt-3 border-t border-gray-50">
+                                        <div className="flex gap-1">
+                                            <button onClick={() => onUpdateExercise(training.id, idx, 'status', 'done')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${ex.status === 'done' ? 'bg-emerald-500 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-emerald-50 hover:text-emerald-400'}`}>
+                                                <Check size={20} />
+                                            </button>
+                                            <button onClick={() => onUpdateExercise(training.id, idx, 'status', 'attention')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${ex.status === 'attention' ? 'bg-amber-400 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-amber-50 hover:text-amber-400'}`}>
+                                                <AlertCircle size={20} />
+                                            </button>
+                                            <button onClick={() => onUpdateExercise(training.id, idx, 'status', 'skipped')} className={`w-10 h-10 rounded-lg flex items-center justify-center transition ${ex.status === 'skipped' ? 'bg-red-500 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-red-50 hover:text-red-400'}`}>
+                                                <X size={20} />
+                                            </button>
+                                        </div>
+                                        {/* WIDER FEEDBACK AREA */}
+                                        <div className="flex-1">
+                                             <input 
+                                                value={ex.actual || ''} 
+                                                onChange={(e) => onUpdateExercise(training.id, idx, 'actual', e.target.value)} 
+                                                className="w-full h-10 px-3 border border-gray-200 rounded-lg bg-gray-50 text-sm outline-none focus:border-blue-400 focus:bg-white transition" 
+                                                placeholder="Wynik / Feedback..." 
+                                             />
                                         </div>
                                     </div>
                                 </div>
@@ -334,9 +366,9 @@
                             {isEditing && <button onClick={() => onAddExercise(training.id)} className="w-full py-3 border border-dashed border-blue-200 rounded-xl text-blue-500 text-sm font-semibold flex items-center justify-center hover:bg-blue-50 transition"><Plus size={18} className="mr-2" /> Dodaj ćwiczenie</button>}
                         </div>
 
-                        {/* Feedback */}
+                        {/* General Feedback */}
                         <div className="pt-2">
-                             <span className="text-[10px] font-bold text-gray-400 uppercase mb-2 block flex items-center"><MessageSquare size={12} className="mr-1"/> Twoje odczucia</span>
+                             <span className="text-[10px] font-bold text-gray-400 uppercase mb-2 block flex items-center"><MessageSquare size={12} className="mr-1"/> Podsumowanie treningu</span>
                             {isEditing ? <textarea value={training.feedback || ''} onChange={(e) => onUpdateTraining(training.id, 'feedback', e.target.value)} className="w-full p-3 rounded-xl border border-gray-200 outline-none text-sm min-h-[80px]" placeholder="Jak poszło?" /> : <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-sm text-gray-600 italic">{training.feedback || 'Brak wpisu.'}</div>}
                         </div>
                     </div>
@@ -348,25 +380,35 @@
             const [statExId, setStatExId] = useState(exerciseLibrary[0]?.id || '');
             const stats = trainings.filter(t => t.exercises && t.exercises.some(e => e.exerciseId === statExId)).sort((a, b) => new Date(b.date) - new Date(a.date));
 
+            const getStatusIcon = (status) => {
+                 if (status === 'done') return <Check size={14} className="text-emerald-500" />;
+                 if (status === 'attention') return <AlertCircle size={14} className="text-amber-500" />;
+                 if (status === 'skipped') return <X size={14} className="text-red-500" />;
+                 return <div className="w-3.5 h-3.5 rounded-full bg-gray-200"></div>;
+            };
+
             return (
                 <div className="p-4 pt-6 pb-24 animate-fade-in max-w-md mx-auto">
                     <Header title="Twój Postęp" icon={TrendingUp} />
                     
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
                         <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Wybierz Ćwiczenie</label>
-                        <select value={statExId} onChange={(e) => setStatExId(e.target.value)} className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 outline-none text-sm font-medium text-gray-700">{exerciseLibrary.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}</select>
+                        <select value={statExId} onChange={(e) => setStatExId(e.target.value)} className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 outline-none text-sm font-bold text-gray-700">{exerciseLibrary.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}</select>
                     </div>
 
                     <div className="space-y-3">
                     {stats.length === 0 ? <div className="text-center py-10 text-gray-300 text-sm">Brak danych dla tego ćwiczenia.</div> : stats.map(t => {
                         const ex = t.exercises.find(e => e.exerciseId === statExId);
                         return (
-                            <div key={t.id} className="bg-white border-l-2 border-blue-500 pl-4 py-3 pr-3 rounded-r-xl shadow-sm flex justify-between items-center">
+                            <div key={t.id} className="bg-white border-l-4 border-blue-500 pl-4 py-3 pr-3 rounded-r-xl shadow-sm flex justify-between items-center">
                                 <div>
                                     <div className="text-xs font-bold text-gray-400 mb-0.5">{new Date(t.date).toLocaleDateString('pl-PL')}</div>
-                                    <div className="text-sm font-bold text-gray-800">{ex.series} serii x {ex.reps}</div>
+                                    <div className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                                        {getStatusIcon(ex.status)}
+                                        {ex.series} serii x {ex.reps}
+                                    </div>
                                 </div>
-                                <div className="bg-gray-100 px-3 py-1 rounded text-xs font-mono font-medium text-gray-600">{ex.load}</div>
+                                <div className="bg-gray-100 px-3 py-1 rounded text-xs font-bold text-gray-700">{ex.load}</div>
                             </div>
                         );
                     })}
@@ -375,72 +417,78 @@
             );
         }
 
-        function ExercisesView({ library, onUpdate, onAdd, onDelete, onFinishEditing }) {
-            const [isEditing, setIsEditing] = useState(false);
-
-            const handleToggleEdit = () => {
-                if (isEditing) {
-                    onFinishEditing(); // Przekierowanie po zakończeniu
-                }
-                setIsEditing(!isEditing);
-            }
+        function ExercisesView({ library, onUpdate, onAdd, onDelete }) {
+            const [editingId, setEditingId] = useState(null);
 
             return (
                 <div className="p-4 pt-6 pb-24 animate-fade-in max-w-md mx-auto">
-                    <Header 
-                        title="Baza Ćwiczeń" 
-                        icon={ClipboardList} 
-                        action={<button onClick={handleToggleEdit} className={`text-xs font-bold px-4 py-2 rounded-full transition uppercase tracking-wide ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'}`}>{isEditing ? 'Zakończ' : 'Edytuj'}</button>}
-                    />
+                    <Header title="Baza Ćwiczeń" icon={ClipboardList} />
                     
                     <div className="space-y-3">
-                        {library.map((ex, idx) => (
-                            <Card key={ex.id} className="p-4 relative">
-                                {isEditing && (
-                                    <button onClick={() => onDelete(ex.id)} className="absolute top-3 right-3 p-1.5 text-gray-300 hover:text-red-500 transition z-10"><Trash size={16} /></button>
-                                )}
-                                <div className={isEditing ? 'pr-8 space-y-3' : 'space-y-1'}>
-                                    {isEditing ? (
-                                        <>
-                                            <div>
-                                                <label className="text-[9px] uppercase font-bold text-gray-400">Nazwa</label>
-                                                <input value={ex.name} onChange={(e) => onUpdate(ex.id, 'name', e.target.value)} className="clean-input w-full text-sm font-bold pb-1" />
-                                            </div>
-                                            <div>
-                                                <label className="text-[9px] uppercase font-bold text-gray-400">Kategoria</label>
-                                                <input value={ex.category} onChange={(e) => onUpdate(ex.id, 'category', e.target.value)} className="clean-input w-full text-xs pb-1" />
-                                            </div>
-                                            <div>
-                                                <label className="text-[9px] uppercase font-bold text-gray-400">Opis domyślny</label>
-                                                <textarea value={ex.defaultDescription} onChange={(e) => onUpdate(ex.id, 'defaultDescription', e.target.value)} className="w-full text-xs border border-gray-200 rounded p-2 outline-none" rows="2" />
-                                            </div>
-                                            <div className="grid grid-cols-3 gap-2">
-                                                <div><label className="text-[9px] uppercase font-bold text-gray-400">Serie</label><input type="number" value={ex.defaultSeries} onChange={(e) => onUpdate(ex.id, 'defaultSeries', parseInt(e.target.value))} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5" /></div>
-                                                <div><label className="text-[9px] uppercase font-bold text-gray-400">Powt.</label><input value={ex.defaultReps} onChange={(e) => onUpdate(ex.id, 'defaultReps', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5" /></div>
-                                                <div><label className="text-[9px] uppercase font-bold text-gray-400">Trud.</label><input value={ex.defaultLoad} onChange={(e) => onUpdate(ex.id, 'defaultLoad', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5" /></div>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="flex justify-between items-start">
-                                                <h3 className="font-bold text-gray-800 text-sm">{ex.name}</h3>
-                                                <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{ex.category}</span>
-                                            </div>
-                                            <p className="text-xs text-gray-500 leading-relaxed">{ex.defaultDescription || 'Brak opisu'}</p>
-                                            <div className="text-[10px] text-gray-400 font-mono mt-1 pt-1 border-t border-gray-50">
-                                                Domyślnie: {ex.defaultSeries}x{ex.defaultReps} | {ex.defaultLoad}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </Card>
-                        ))}
+                        {library.map((ex, idx) => {
+                            const isEditing = editingId === ex.id;
+                            
+                            return (
+                                <Card key={ex.id} className="p-4 relative">
+                                    {/* Action Buttons */}
+                                    <div className="absolute top-3 right-3 flex gap-2 z-10">
+                                        {isEditing ? (
+                                            <button onClick={() => setEditingId(null)} className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-full shadow-md transition">
+                                                <Check size={16} />
+                                            </button>
+                                        ) : (
+                                            <>
+                                                <button onClick={() => setEditingId(ex.id)} className="p-1.5 text-gray-300 hover:text-blue-500 transition">
+                                                    <Pencil size={18} />
+                                                </button>
+                                                <button onClick={() => onDelete(ex.id)} className="p-1.5 text-gray-300 hover:text-red-500 transition">
+                                                    <Trash size={18} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
 
-                        {isEditing && (
-                            <button onClick={onAdd} className="w-full py-3 border border-dashed border-blue-200 rounded-xl text-blue-500 font-semibold text-sm flex items-center justify-center hover:bg-blue-50 transition">
-                                <Plus size={18} className="mr-2" /> Dodaj Nowe Ćwiczenie
-                            </button>
-                        )}
+                                    <div className={isEditing ? 'pr-1 space-y-3' : 'space-y-1'}>
+                                        {isEditing ? (
+                                            <>
+                                                <div>
+                                                    <label className="text-[9px] uppercase font-bold text-gray-400">Nazwa</label>
+                                                    <input value={ex.name} onChange={(e) => onUpdate(ex.id, 'name', e.target.value)} className="clean-input w-full text-sm font-bold pb-1" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] uppercase font-bold text-gray-400">Kategoria</label>
+                                                    <input value={ex.category} onChange={(e) => onUpdate(ex.id, 'category', e.target.value)} className="clean-input w-full text-xs pb-1" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] uppercase font-bold text-gray-400">Opis domyślny</label>
+                                                    <textarea value={ex.defaultDescription} onChange={(e) => onUpdate(ex.id, 'defaultDescription', e.target.value)} className="w-full text-xs border border-gray-200 rounded p-2 outline-none" rows="2" />
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <div><label className="text-[9px] uppercase font-bold text-gray-400">Serie</label><input type="number" value={ex.defaultSeries} onChange={(e) => onUpdate(ex.id, 'defaultSeries', parseInt(e.target.value))} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" /></div>
+                                                    <div><label className="text-[9px] uppercase font-bold text-gray-400">Powt.</label><input value={ex.defaultReps} onChange={(e) => onUpdate(ex.id, 'defaultReps', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" /></div>
+                                                    <div><label className="text-[9px] uppercase font-bold text-gray-400">Trud.</label><input value={ex.defaultLoad} onChange={(e) => onUpdate(ex.id, 'defaultLoad', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" /></div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="flex justify-between items-start pr-16">
+                                                    <h3 className="font-bold text-gray-800 text-sm">{ex.name}</h3>
+                                                </div>
+                                                <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full inline-block mb-1">{ex.category}</span>
+                                                <p className="text-xs text-gray-500 leading-relaxed pr-8">{ex.defaultDescription || 'Brak opisu'}</p>
+                                                <div className="text-[10px] text-gray-400 font-bold mt-1 pt-1 border-t border-gray-50">
+                                                    Domyślnie: {ex.defaultSeries}x{ex.defaultReps} | {ex.defaultLoad}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </Card>
+                            );
+                        })}
+
+                        <button onClick={onAdd} className="w-full py-3 border border-dashed border-blue-200 rounded-xl text-blue-500 font-semibold text-sm flex items-center justify-center hover:bg-blue-50 transition">
+                            <Plus size={18} className="mr-2" /> Dodaj Nowe Ćwiczenie
+                        </button>
                     </div>
                 </div>
             );
@@ -563,7 +611,8 @@
                                     series: defaultEx.defaultSeries || 3, 
                                     reps: defaultEx.defaultReps || '10', 
                                     load: defaultEx.defaultLoad || '-', 
-                                    actual: '' 
+                                    actual: '',
+                                    status: null // 'done', 'attention', 'skipped'
                                 }
                             ] 
                         };
@@ -604,7 +653,6 @@
                     id: newId, 
                     date: new Date().toISOString().split('T')[0], 
                     location: '', 
-                    // weight usunięte
                     isCompleted: false, 
                     feedback: '', 
                     coachNotes: '', 
@@ -614,7 +662,8 @@
                         series: defaultEx.defaultSeries || 3, 
                         reps: defaultEx.defaultReps || '10', 
                         load: defaultEx.defaultLoad || '-', 
-                        actual: '' 
+                        actual: '',
+                        status: null
                     }] 
                 };
                 
@@ -685,7 +734,6 @@
                             onUpdate={handleUpdateLib} 
                             onAdd={handleAddLib} 
                             onDelete={handleDeleteLib} 
-                            onFinishEditing={() => setActiveTab('trainings')}
                         />
                     )}
                     
