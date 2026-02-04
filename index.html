@@ -92,7 +92,7 @@
         const TrendingUp = (p) => <IconBase {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></IconBase>;
         const User = (p) => <IconBase {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
         const MapPin = (p) => <IconBase {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></IconBase>;
-        const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></IconBase>;
+        const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
         const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
         const Dumbbell = (p) => <IconBase {...p}><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></IconBase>;
         const Trash = (p) => <IconBase {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></IconBase>;
@@ -130,7 +130,6 @@
 
         function TrainingListView({ trainings, onSelect, onAdd }) {
             const [viewMode, setViewMode] = useState('planned');
-            // Zmieniono logikę: patrzymy tylko na t.isCompleted
             const filtered = trainings.filter(t => !!t.isCompleted === (viewMode === 'completed'));
             const sorted = [...filtered].sort((a, b) => viewMode === 'planned' ? new Date(a.date) - new Date(b.date) : new Date(b.date) - new Date(a.date));
 
@@ -158,9 +157,9 @@
                                         {t.isCompleted ? <Badge type="success">Ukończony</Badge> : <Badge type="warning">Zaplanowany</Badge>}
                                     </div>
                                     <div className="mt-3 space-y-1">
-                                        {t.exercises.slice(0, 2).map((ex, idx) => (
+                                        {t.exercises && t.exercises.slice(0, 2).map((ex, idx) => (
                                             <div key={idx} className="text-sm text-slate-500 flex justify-between">
-                                                <span>• {EXERCISE_LIBRARY.find(e => e.id === ex.exerciseId)?.name}</span>
+                                                <span>• {EXERCISE_LIBRARY.find(e => e.id === ex.exerciseId)?.name || 'Nieznane ćwiczenie'}</span>
                                                 <span className="text-xs font-mono text-slate-400">{ex.series}x{ex.reps}</span>
                                             </div>
                                         ))}
@@ -235,7 +234,7 @@
                         </div>
                         <div className="space-y-4">
                             <h3 className="font-bold text-slate-800 text-lg flex items-center"><Dumbbell className="mr-2 text-slate-400" size={20} /> Plan Treningowy</h3>
-                            {training.exercises.map((ex, idx) => (
+                            {training.exercises && training.exercises.map((ex, idx) => (
                                 <Card key={idx} className="p-4 relative">
                                     {isEditing && <button onClick={() => onDeleteExercise(training.id, idx)} className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 z-20"><Trash size={16} /></button>}
                                     <div className={`mb-2 ${isEditing ? 'pr-12' : ''}`}>
@@ -243,7 +242,7 @@
                                             <select value={ex.exerciseId} onChange={(e) => onUpdateExercise(training.id, idx, 'exerciseId', e.target.value)} className="w-full font-bold text-slate-700 bg-transparent border-b border-slate-300 outline-none pb-1">
                                                 {EXERCISE_LIBRARY.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             </select>
-                                        ) : <h4 className="font-bold text-slate-700">{EXERCISE_LIBRARY.find(l => l.id === ex.exerciseId)?.name}</h4>}
+                                        ) : <h4 className="font-bold text-slate-700">{EXERCISE_LIBRARY.find(l => l.id === ex.exerciseId)?.name || 'Ćwiczenie'}</h4>}
                                     </div>
                                     <div className="mb-3">
                                         {isEditing ? <textarea value={ex.description} onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm outline-none placeholder:text-slate-400" placeholder="Opis ćwiczenia..." /> : <div className="text-sm text-slate-600 italic bg-slate-50 p-2 rounded">{ex.description || 'Brak opisu'}</div>}
@@ -271,7 +270,7 @@
 
         function AnalyticsView({ trainings }) {
             const [statExId, setStatExId] = useState(EXERCISE_LIBRARY[1].id);
-            const stats = trainings.filter(t => t.exercises.some(e => e.exerciseId === statExId)).sort((a, b) => new Date(b.date) - new Date(a.date));
+            const stats = trainings.filter(t => t.exercises && t.exercises.some(e => e.exerciseId === statExId)).sort((a, b) => new Date(b.date) - new Date(a.date));
 
             return (
                 <div className="p-4 pb-20 space-y-6 animate-fade-in">
@@ -313,7 +312,7 @@
                     let attempts = 0;
                     while (!window.firestoreOps && attempts < 20) { await new Promise(r => setTimeout(r, 100)); attempts++; }
                     if (!window.firestoreOps) { setLoading(false); return; }
-                    const { signInAnonymously, signInWithCustomToken, collection, query, onSnapshot } = window.firestoreOps;
+                    const { signInAnonymously, signInWithCustomToken, collection, query, onSnapshot, doc, setDoc } = window.firestoreOps;
                     try {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(window.auth, __initial_auth_token);
                         else await signInAnonymously(window.auth);
@@ -374,8 +373,20 @@
 
             const handleAddE = (id) => {
                 setTrainings(prev => {
-                    const next = prev.map(t => t.id === id ? { ...t, exercises: [...t.exercises, { exerciseId: EXERCISE_LIBRARY[0].id, description: '', series: 3, reps: '10', load: '-', actual: '' }] } : t);
-                    saveToDb(next.find(t => t.id === id));
+                    const next = prev.map(t => {
+                        if (t.id !== id) return t;
+                        // FIX: Upewniamy się, że exercises istnieje przed dodaniem
+                        const currentExercises = Array.isArray(t.exercises) ? t.exercises : [];
+                        return { 
+                            ...t, 
+                            exercises: [
+                                ...currentExercises, 
+                                { exerciseId: EXERCISE_LIBRARY[0].id, description: '', series: 3, reps: '10', load: '-', actual: '' }
+                            ] 
+                        };
+                    });
+                    const updated = next.find(t => t.id === id);
+                    if (updated) saveToDb(updated);
                     return next;
                 });
             };
@@ -419,6 +430,7 @@
                 }
                 
                 // KROK 2: Dopiero po zapisie przechodzimy do edycji
+                setTrainings(p => [newT, ...p]); // Optymistyczna aktualizacja lokalna
                 setSelectedId(newId);
                 setIsEditing(true);
             };
