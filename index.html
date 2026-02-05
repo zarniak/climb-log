@@ -39,10 +39,6 @@
         .clean-input:focus {
             border-color: #3b82f6;
         }
-
-        /* Tooltip animation */
-        .tooltip-enter { opacity: 0; transform: translateY(5px); }
-        .tooltip-enter-active { opacity: 1; transform: translateY(0); transition: opacity 200ms, transform 200ms; }
     </style>
 </head>
 <body>
@@ -154,16 +150,17 @@
         }
 
         // --- TOOLTIP INPUT ---
-        // Komponent pola z podpowiedzią chmurkową po kliknięciu/skupieniu
-        function ParamInput({ value, onChange, label, width = "w-10", placeholder = "" }) {
+        function ParamInput({ value, onChange, label, width = "w-10", placeholder = "", wrapperClass = "" }) {
             const [isFocused, setIsFocused] = useState(false);
 
             return (
-                <div className="relative flex items-center">
+                <div className={`relative flex items-center ${wrapperClass}`}>
                     {isFocused && (
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded shadow-md whitespace-nowrap z-20 pointer-events-none animate-fade-in">
-                            {label}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-slate-800"></div>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20 pointer-events-none">
+                             <div className="px-2 py-1 bg-slate-800 text-white text-[10px] rounded shadow-md whitespace-nowrap animate-fade-in">
+                                {label}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-slate-800"></div>
+                            </div>
                         </div>
                     )}
                     <input 
@@ -393,21 +390,22 @@
                                         )}
                                     </div>
                                     
-                                    <div className={isEditingThis ? 'pr-20 mb-3' : 'pr-16 mb-3'}>
+                                    <div className={isEditingThis ? 'pr-20 mb-3' : 'pr-16 mb-1'}>
                                         {isEditingThis ? (
                                             <select value={ex.exerciseId} onChange={(e) => onUpdateExercise(training.id, idx, 'exerciseId', e.target.value)} className="w-full text-sm font-bold text-gray-800 bg-transparent border-b border-gray-200 outline-none pb-1">
                                                 {exerciseLibrary.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             </select>
                                         ) : (
-                                            <>
-                                                <h4 className="text-sm font-bold text-gray-800 mb-1">{libEx?.name || 'Ćwiczenie'}</h4>
-                                                <div className="flex justify-between items-baseline mb-2">
-                                                     <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{libEx?.category || 'Ogólne'}</span>
-                                                     <span className="text-xs text-gray-600">{formatEx(ex)}</span>
-                                                </div>
-                                            </>
+                                            <h4 className="text-sm font-bold text-gray-800">{libEx?.name || 'Ćwiczenie'}</h4>
                                         )}
                                     </div>
+
+                                    {!isEditingThis && (
+                                        <div className="flex justify-between items-baseline mb-3">
+                                             <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{libEx?.category || 'Ogólne'}</span>
+                                             <span className="text-xs text-gray-600">{formatEx(ex)}</span>
+                                        </div>
+                                    )}
 
                                     {/* Parameters Edit Row (Single Line) */}
                                     {isEditingThis && (
@@ -430,7 +428,7 @@
                                             
                                             <span className="text-gray-400 text-xs font-bold">:</span>
                                             
-                                            <ParamInput label="Trudność (Load)" width="w-12" value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} />
+                                            <ParamInput label="Trudność (Load)" width="w-full" wrapperClass="flex-1 min-w-[80px]" value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} />
                                         </div>
                                     )}
 
@@ -621,7 +619,7 @@
                                                         
                                                         <span className="text-gray-400 text-xs font-bold">:</span>
                                                         
-                                                        <ParamInput label="Trudność (Load)" width="w-12" value={ex.defaultLoad} onChange={(e) => onUpdate(ex.id, 'defaultLoad', e.target.value)} />
+                                                        <ParamInput label="Trudność (Load)" width="w-full" wrapperClass="flex-1 min-w-[80px]" value={ex.defaultLoad} onChange={(e) => onUpdate(ex.id, 'defaultLoad', e.target.value)} />
                                                     </div>
                                                 </div>
                                             </>
