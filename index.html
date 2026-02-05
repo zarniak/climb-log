@@ -39,6 +39,10 @@
         .clean-input:focus {
             border-color: #3b82f6;
         }
+
+        /* Tooltip animation */
+        .tooltip-enter { opacity: 0; transform: translateY(5px); }
+        .tooltip-enter-active { opacity: 1; transform: translateY(0); transition: opacity 200ms, transform 200ms; }
     </style>
 </head>
 <body>
@@ -69,9 +73,6 @@
         import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         try {
-            // ------------------------------------------------------------------
-            // KONFIGURACJA UŻYTKOWNIKA
-            // ------------------------------------------------------------------
             const userConfig = {
               apiKey: "AIzaSyAgIGDQaKWHcBiEUwVavMOpj5TX5n81Bnw",
               authDomain: "climblog-7432b.firebaseapp.com",
@@ -115,10 +116,8 @@
         const ChevronRight = (p) => <IconBase {...p}><path d="m9 18 6-6-6-6"/></IconBase>;
         const Plus = (p) => <IconBase {...p}><path d="M5 12h14"/><path d="M12 5v14"/></IconBase>;
         const TrendingUp = (p) => <IconBase {...p}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></IconBase>;
-        const User = (p) => <IconBase {...p}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
         const MapPin = (p) => <IconBase {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></IconBase>;
         const MessageSquare = (p) => <IconBase {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h14a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
-        const Dumbbell = (p) => <IconBase {...p}><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></IconBase>;
         const Trash = (p) => <IconBase {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></IconBase>;
         const ClipboardList = (p) => <IconBase {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
         const CheckCircle = (p) => <IconBase {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
@@ -150,6 +149,31 @@
                         {title}
                     </h2>
                     {action}
+                </div>
+            );
+        }
+
+        // --- TOOLTIP INPUT ---
+        // Komponent pola z podpowiedzią chmurkową po kliknięciu/skupieniu
+        function ParamInput({ value, onChange, label, width = "w-10", placeholder = "" }) {
+            const [isFocused, setIsFocused] = useState(false);
+
+            return (
+                <div className="relative flex items-center">
+                    {isFocused && (
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded shadow-md whitespace-nowrap z-20 pointer-events-none animate-fade-in">
+                            {label}
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-slate-800"></div>
+                        </div>
+                    )}
+                    <input 
+                        value={value || ''}
+                        onChange={onChange}
+                        onFocus={() => setIsFocused(true)}
+                        onBlur={() => setIsFocused(false)}
+                        placeholder={placeholder}
+                        className={`${width} h-7 text-center bg-gray-50 border border-gray-200 rounded text-xs text-gray-700 outline-none focus:border-blue-400 focus:bg-white transition-colors placeholder-gray-300`}
+                    />
                 </div>
             );
         }
@@ -254,34 +278,39 @@
             );
         }
 
-        function TrainingDetailView({ training, isEditing, onToggleEdit, onClose, onUpdateTraining, onUpdateExercise, onAddExercise, onDeleteExercise, onDeleteTraining, exerciseLibrary }) {
+        function TrainingDetailView({ training, onClose, onUpdateTraining, onUpdateExercise, onAddExercise, onDeleteExercise, onDeleteTraining, exerciseLibrary }) {
+            const [isHeaderEditing, setIsHeaderEditing] = useState(false);
+            const [editingExIndex, setEditingExIndex] = useState(null);
+
             if (!training) return null;
             const isCompleted = !!training.isCompleted;
 
             return (
                 <div className="pb-24 animate-fade-in bg-white min-h-screen">
+                    {/* Header: Controls */}
                     <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 border-b border-gray-100 px-4 py-3 flex items-center justify-between">
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-800 flex items-center text-sm font-medium transition"><ChevronRight className="rotate-180 mr-1" size={18} /> Wróć</button>
                         <div className="flex items-center gap-3">
                              <button onClick={() => onDeleteTraining(training.id)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition"><Trash size={18} /></button>
                              
-                            <button onClick={onToggleEdit} className={`w-8 h-8 flex items-center justify-center rounded-full transition ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}>
-                                {isEditing ? <Check size={18} /> : <Pencil size={18} />}
+                            <button onClick={() => setIsHeaderEditing(!isHeaderEditing)} className={`w-8 h-8 flex items-center justify-center rounded-full transition ${isHeaderEditing ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}>
+                                {isHeaderEditing ? <Check size={18} /> : <Pencil size={18} />}
                             </button>
                         </div>
                     </div>
 
                     <div className="p-4 space-y-4 max-w-md mx-auto">
+                        {/* Date & Location */}
                         <div>
                              <div className="flex justify-between items-start">
                                 <div className="flex-1">
-                                    {isEditing ? (
+                                    {isHeaderEditing ? (
                                         <input type="date" value={training.date} onChange={(e) => onUpdateTraining(training.id, 'date', e.target.value)} className="text-2xl font-bold text-gray-900 bg-transparent border-b border-gray-200 w-full outline-none" />
                                     ) : (
                                         <h1 className="text-2xl font-bold text-gray-900">{formatDatePretty(training.date)}</h1>
                                     )}
                                 </div>
-                                {!isEditing && (
+                                {!isHeaderEditing && (
                                     <a href={generateCalendarLink(training)} target="_blank" className="p-2 text-gray-400 hover:text-gray-600 transition">
                                         <CalendarPlus size={24} />
                                     </a>
@@ -290,7 +319,7 @@
                             
                             <div className="flex items-center mt-2 text-gray-500 text-sm">
                                 <MapPin size={14} className="mr-1.5 text-blue-500" />
-                                {isEditing ? (
+                                {isHeaderEditing ? (
                                     <input value={training.location} onChange={(e) => onUpdateTraining(training.id, 'location', e.target.value)} className="clean-input w-full text-sm" placeholder="Gdzie się wspinasz?" />
                                 ) : (
                                     training.location ? (
@@ -304,6 +333,7 @@
                             </div>
                         </div>
 
+                        {/* Status Switcher */}
                         <button
                             onClick={() => onUpdateTraining(training.id, 'isCompleted', !isCompleted)}
                             className={`w-full py-2 rounded-xl font-bold uppercase tracking-wide flex items-center justify-center transition border ${
@@ -315,19 +345,29 @@
                             {isCompleted ? <><CheckCircle size={16} className="mr-2"/> Ukończony</> : <><Calendar size={16} className="mr-2"/> Zaplanowany</>}
                         </button>
 
+                        {/* Coach Notes - Always Editable */}
                         <div className="bg-yellow-50/50 border border-yellow-100 rounded-xl p-3">
                             <div className="flex items-start gap-2">
                                 <MessageSquare size={16} className="text-yellow-600 mt-0.5 shrink-0" />
                                 <div className="w-full">
                                     <span className="text-[10px] font-bold text-yellow-600 uppercase mb-1 block">Notatka Trenera</span>
-                                    {isEditing ? <textarea value={training.coachNotes} placeholder="Wpisz cele..." onChange={(e) => onUpdateTraining(training.id, 'coachNotes', e.target.value)} className="w-full bg-white/50 border border-yellow-200/50 rounded p-2 text-xs outline-none" rows="2" /> : <p className="text-xs text-gray-700 leading-relaxed">{training.coachNotes || 'Brak uwag.'}</p>}
+                                    <textarea 
+                                        value={training.coachNotes} 
+                                        onChange={(e) => onUpdateTraining(training.id, 'coachNotes', e.target.value)} 
+                                        className="w-full bg-yellow-100/30 border border-yellow-200/50 rounded p-2 text-xs outline-none focus:bg-white focus:border-yellow-400 transition" 
+                                        rows="2" 
+                                        placeholder="Wpisz cele / uwagi..." 
+                                    />
                                 </div>
                             </div>
                         </div>
 
+                        {/* Exercises List */}
                         <div className="space-y-4 pt-2">
                             {training.exercises && training.exercises.map((ex, idx) => {
                                 const libEx = exerciseLibrary.find(l => l.id === ex.exerciseId);
+                                const isEditingThis = editingExIndex === idx;
+
                                 const toggleStatus = (newStatus) => {
                                     const next = ex.status === newStatus ? null : newStatus;
                                     onUpdateExercise(training.id, idx, 'status', next);
@@ -335,10 +375,26 @@
 
                                 return (
                                 <div key={idx} className="bg-white border border-gray-100 rounded-xl p-4 relative shadow-sm hover:border-blue-200 transition">
-                                    {isEditing && <button onClick={() => onDeleteExercise(training.id, idx)} className="absolute top-3 right-3 p-1.5 text-gray-300 hover:text-red-500 z-10"><Trash size={16} /></button>}
+                                    {/* Indivudal Exercise Actions */}
+                                    <div className="absolute top-3 right-3 flex gap-2 z-10">
+                                        {isEditingThis ? (
+                                             <button onClick={() => setEditingExIndex(null)} className="w-6 h-6 flex items-center justify-center bg-blue-600 text-white rounded shadow-sm hover:bg-blue-700 transition">
+                                                <Check size={12} />
+                                             </button>
+                                        ) : (
+                                            <>
+                                                <button onClick={() => setEditingExIndex(idx)} className="p-1 text-gray-300 hover:text-blue-500 transition">
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button onClick={() => onDeleteExercise(training.id, idx)} className="p-1 text-gray-300 hover:text-red-500 transition">
+                                                    <Trash size={14} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                     
-                                    <div className={isEditing ? 'pr-8 mb-2' : 'mb-3'}>
-                                        {isEditing ? (
+                                    <div className={isEditingThis ? 'pr-20 mb-3' : 'pr-16 mb-3'}>
+                                        {isEditingThis ? (
                                             <select value={ex.exerciseId} onChange={(e) => onUpdateExercise(training.id, idx, 'exerciseId', e.target.value)} className="w-full text-sm font-bold text-gray-800 bg-transparent border-b border-gray-200 outline-none pb-1">
                                                 {exerciseLibrary.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                                             </select>
@@ -353,41 +409,35 @@
                                         )}
                                     </div>
 
-                                    <div className="grid grid-cols-12 gap-3 items-start mb-3">
-                                        <div className={isEditing ? "col-span-7" : "col-span-12"}>
-                                             {isEditing ? <textarea value={ex.description} onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded p-1.5 text-xs outline-none" rows="3" placeholder="Opis..." /> : <p className="text-xs text-gray-500 leading-relaxed">{ex.description}</p>}
+                                    {/* Parameters Edit Row (Single Line) */}
+                                    {isEditingThis && (
+                                        <div className="flex flex-wrap items-center gap-1.5 mb-3 p-2 bg-gray-50/50 rounded-lg border border-gray-100">
+                                            <ParamInput label="Powtórzenia" width="w-8" value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} />
+                                            
+                                            <span className="text-gray-300 text-[10px]">(</span>
+                                            <ParamInput label="Czas powtórzenia" width="w-8" value={ex.timeRep} onChange={(e) => onUpdateExercise(training.id, idx, 'timeRep', e.target.value)} placeholder="t" />
+                                            <span className="text-gray-300 text-[10px]">/</span>
+                                            <ParamInput label="Przerwa między powt." width="w-8" value={ex.restRep} onChange={(e) => onUpdateExercise(training.id, idx, 'restRep', e.target.value)} placeholder="p" />
+                                            <span className="text-gray-300 text-[10px]">)</span>
+                                            
+                                            <span className="text-gray-400 text-xs font-bold">x</span>
+                                            
+                                            <ParamInput label="Ilość serii" width="w-8" value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} />
+                                            
+                                            <span className="text-gray-300 text-[10px]">(</span>
+                                            <ParamInput label="Przerwa między seriami" width="w-10" value={ex.restSet} onChange={(e) => onUpdateExercise(training.id, idx, 'restSet', e.target.value)} placeholder="czas" />
+                                            <span className="text-gray-300 text-[10px]">)</span>
+                                            
+                                            <span className="text-gray-400 text-xs font-bold">:</span>
+                                            
+                                            <ParamInput label="Trudność (Load)" width="w-12" value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} />
                                         </div>
-                                        
-                                        {isEditing && (
-                                            <div className="col-span-5 space-y-2">
-                                                    <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
-                                                        <span className="text-gray-400">Plan:</span>
-                                                        <div className="flex gap-1">
-                                                            <input value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} className="w-6 text-center bg-gray-50 rounded font-bold text-gray-600" />
-                                                            <span>x</span>
-                                                            <input value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} className="w-8 text-center bg-gray-50 rounded font-bold text-gray-600" />
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
-                                                        <span className="text-gray-400">Trud:</span>
-                                                        <input value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} className="w-16 text-right bg-gray-50 rounded font-bold text-gray-600" />
-                                                    </div>
-                                                    <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
-                                                         <span className="text-gray-400 flex items-center"><Clock size={10} className="mr-1"/> Czas/P:</span>
-                                                         <div className="flex gap-1 justify-end">
-                                                            <input placeholder="s" title="Czas powtórzenia" value={ex.timeRep || ''} onChange={(e) => onUpdateExercise(training.id, idx, 'timeRep', e.target.value)} className="w-8 text-right bg-gray-50 rounded font-mono text-[10px]" />
-                                                            <span className="text-gray-300">/</span>
-                                                            <input placeholder="s" title="Przerwa między powtórzeniami" value={ex.restRep || ''} onChange={(e) => onUpdateExercise(training.id, idx, 'restRep', e.target.value)} className="w-8 text-right bg-gray-50 rounded font-mono text-[10px]" />
-                                                         </div>
-                                                    </div>
-                                                    <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
-                                                         <span className="text-gray-400">P.Serii:</span>
-                                                         <input value={ex.restSet || ''} onChange={(e) => onUpdateExercise(training.id, idx, 'restSet', e.target.value)} className="w-16 text-right bg-gray-50 rounded font-mono text-[10px]" placeholder="czas" />
-                                                    </div>
-                                            </div>
-                                        )}
-                                    </div>
+                                    )}
 
+                                    <div className="mb-3">
+                                         {isEditingThis ? <textarea value={ex.description} onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded p-1.5 text-xs outline-none" rows="3" placeholder="Opis..." /> : <p className="text-xs text-gray-500 leading-relaxed">{ex.description}</p>}
+                                    </div>
+                                    
                                     {/* STATUS BUTTONS ROW */}
                                     <div className="flex gap-2 mt-3 pt-3 border-t border-gray-50">
                                         <div className="flex flex-col gap-1 shrink-0">
@@ -412,9 +462,11 @@
                                     </div>
                                 </div>
                                 )})}
-                            {isEditing && <button onClick={() => onAddExercise(training.id)} className="w-full py-3 border border-dashed border-blue-200 rounded-xl text-blue-500 text-sm font-semibold flex items-center justify-center hover:bg-blue-50 transition"><Plus size={18} className="mr-2" /> Dodaj ćwiczenie</button>}
+                            
+                            <button onClick={() => onAddExercise(training.id)} className="w-full py-3 border border-dashed border-blue-200 rounded-xl text-blue-500 text-sm font-semibold flex items-center justify-center hover:bg-blue-50 transition"><Plus size={18} className="mr-2" /> Dodaj ćwiczenie</button>
                         </div>
 
+                        {/* General Feedback / Summary - Always Editable */}
                         <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 mt-4">
                             <div className="flex items-start gap-2">
                                 <MessageSquare size={16} className="text-blue-600 mt-0.5 shrink-0" />
@@ -466,14 +518,12 @@
                                          <div title={t.isCompleted ? "Ukończony" : "Zaplanowany"} className="flex items-center">
                                             {t.isCompleted ? <CheckCircle size={16} className="text-emerald-500"/> : <Calendar size={16} className="text-amber-500"/>}
                                         </div>
-                                        <div className="text-sm font-bold text-gray-700">{formatDatePretty(t.date)}</div>
+                                        <div className="text-xs font-medium text-gray-500">{formatDatePretty(t.date)}</div>
                                         <div className="text-xs text-gray-700 flex items-center gap-2">
                                             {getStatusIcon(ex.status)}
                                         </div>
                                     </div>
-                                </div>
-                                <div className="flex justify-end items-baseline mb-1">
-                                    <span className="text-xs text-gray-600 font-mono">{formatEx(ex)}</span>
+                                    <span className="text-xs text-gray-600 font-mono text-right">{formatEx(ex)}</span>
                                 </div>
                                 {ex.actual && (
                                     <div className="text-[10px] text-gray-500 italic border-t border-gray-50 pt-1 mt-1">
@@ -548,15 +598,31 @@
                                                     <label className="text-[9px] uppercase font-bold text-gray-400">Opis domyślny</label>
                                                     <textarea value={ex.defaultDescription} onChange={(e) => onUpdate(ex.id, 'defaultDescription', e.target.value)} className="w-full text-xs border border-gray-200 rounded p-2 outline-none" rows="2" />
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div><label className="text-[9px] uppercase font-bold text-gray-400">Serie</label><input type="number" value={ex.defaultSeries} onChange={(e) => onUpdate(ex.id, 'defaultSeries', parseInt(e.target.value))} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" /></div>
-                                                    <div><label className="text-[9px] uppercase font-bold text-gray-400">Powt.</label><input value={ex.defaultReps} onChange={(e) => onUpdate(ex.id, 'defaultReps', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" /></div>
-                                                    <div><label className="text-[9px] uppercase font-bold text-gray-400">Trud.</label><input value={ex.defaultLoad} onChange={(e) => onUpdate(ex.id, 'defaultLoad', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" /></div>
-                                                    <div><label className="text-[9px] uppercase font-bold text-gray-400">P.Seria</label><input value={ex.defaultRestSet || ''} onChange={(e) => onUpdate(ex.id, 'defaultRestSet', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" placeholder="Czas" /></div>
-                                                </div>
-                                                 <div className="grid grid-cols-2 gap-2">
-                                                    <div><label className="text-[9px] uppercase font-bold text-gray-400">Czas/Powt</label><input value={ex.defaultTimeRep || ''} onChange={(e) => onUpdate(ex.id, 'defaultTimeRep', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" placeholder="Czas" /></div>
-                                                    <div><label className="text-[9px] uppercase font-bold text-gray-400">P.Powt</label><input value={ex.defaultRestRep || ''} onChange={(e) => onUpdate(ex.id, 'defaultRestRep', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" placeholder="Czas" /></div>
+                                                
+                                                {/* Single Line Parameter Edit */}
+                                                <div>
+                                                     <label className="text-[9px] uppercase font-bold text-gray-400 mb-1 block">Parametry Domyślne</label>
+                                                     <div className="flex flex-wrap items-center gap-1.5 p-2 bg-gray-50/50 rounded-lg border border-gray-100">
+                                                        <ParamInput label="Powtórzenia" width="w-8" value={ex.defaultReps} onChange={(e) => onUpdate(ex.id, 'defaultReps', e.target.value)} />
+                                                        
+                                                        <span className="text-gray-300 text-[10px]">(</span>
+                                                        <ParamInput label="Czas powtórzenia" width="w-8" value={ex.defaultTimeRep} onChange={(e) => onUpdate(ex.id, 'defaultTimeRep', e.target.value)} placeholder="t" />
+                                                        <span className="text-gray-300 text-[10px]">/</span>
+                                                        <ParamInput label="Przerwa między powt." width="w-8" value={ex.defaultRestRep} onChange={(e) => onUpdate(ex.id, 'defaultRestRep', e.target.value)} placeholder="p" />
+                                                        <span className="text-gray-300 text-[10px]">)</span>
+                                                        
+                                                        <span className="text-gray-400 text-xs font-bold">x</span>
+                                                        
+                                                        <ParamInput label="Ilość serii" width="w-8" value={ex.defaultSeries} onChange={(e) => onUpdate(ex.id, 'defaultSeries', e.target.value)} />
+                                                        
+                                                        <span className="text-gray-300 text-[10px]">(</span>
+                                                        <ParamInput label="Przerwa między seriami" width="w-10" value={ex.defaultRestSet} onChange={(e) => onUpdate(ex.id, 'defaultRestSet', e.target.value)} placeholder="czas" />
+                                                        <span className="text-gray-300 text-[10px]">)</span>
+                                                        
+                                                        <span className="text-gray-400 text-xs font-bold">:</span>
+                                                        
+                                                        <ParamInput label="Trudność (Load)" width="w-12" value={ex.defaultLoad} onChange={(e) => onUpdate(ex.id, 'defaultLoad', e.target.value)} />
+                                                    </div>
                                                 </div>
                                             </>
                                         ) : (
@@ -587,7 +653,6 @@
             const [trainings, setTrainings] = useState([]);
             const [exerciseLibrary, setExerciseLibrary] = useState(INITIAL_EXERCISE_LIBRARY);
             const [selectedId, setSelectedId] = useState(null);
-            const [isEditing, setIsEditing] = useState(false);
             const [user, setUser] = useState(null);
             const [isOnline, setIsOnline] = useState(false);
             const saveTimeout = useRef(null);
@@ -750,7 +815,7 @@
                 if (user && window.firestoreOps) {
                     try {
                         await window.firestoreOps.deleteDoc(window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', id.toString()));
-                        setSelectedId(null); setIsEditing(false);
+                        setSelectedId(null);
                     } catch (e) { console.error(e); }
                 }
             };
@@ -786,7 +851,6 @@
                 
                 setTrainings(p => [newT, ...p]);
                 setSelectedId(newId);
-                setIsEditing(true);
             };
 
             const handleUpdateLib = (id, field, value) => {
@@ -829,18 +893,14 @@
 
                     {selected ? (
                         <TrainingDetailView 
-                            training={selected} isEditing={isEditing} 
-                            onToggleEdit={() => {
-                                if (isEditing) saveTrainingToDb(selected); 
-                                setIsEditing(!isEditing);
-                            }} 
-                            onClose={() => { setSelectedId(null); setIsEditing(false); }}
+                            training={selected} 
+                            onClose={() => { setSelectedId(null); }}
                             onUpdateTraining={handleUpdateT} onUpdateExercise={handleUpdateE}
                             onAddExercise={handleAddE} onDeleteExercise={handleDeleteE} onDeleteTraining={handleDeleteT}
                             exerciseLibrary={exerciseLibrary}
                         />
                     ) : activeTab === 'trainings' ? (
-                        <TrainingListView trainings={trainings} onSelect={(id) => { setSelectedId(id); setIsEditing(false); }} onAdd={handleAddT} exerciseLibrary={exerciseLibrary} />
+                        <TrainingListView trainings={trainings} onSelect={(id) => { setSelectedId(id); }} onAdd={handleAddT} exerciseLibrary={exerciseLibrary} />
                     ) : activeTab === 'analytics' ? (
                         <AnalyticsView trainings={trainings} exerciseLibrary={exerciseLibrary} />
                     ) : (
