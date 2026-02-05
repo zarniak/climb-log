@@ -73,12 +73,12 @@
             // KONFIGURACJA UŻYTKOWNIKA
             // ------------------------------------------------------------------
             const userConfig = {
-              apiKey: "AIzaSyAgIGDQaKWHcBiEUwVavMOpj5TX5n81Bnw",
-              authDomain: "climblog-7432b.firebaseapp.com",
-              projectId: "climblog-7432b",
-              storageBucket: "climblog-7432b.firebasestorage.app",
-              messagingSenderId: "155094312417",
-              appId: "1:155094312417:web:19e35e3699737be22cdea0"
+                  apiKey: "AIzaSyAgIGDQaKWHcBiEUwVavMOpj5TX5n81Bnw",
+                  authDomain: "climblog-7432b.firebaseapp.com",
+                  projectId: "climblog-7432b",
+                  storageBucket: "climblog-7432b.firebasestorage.app",
+                  messagingSenderId: "155094312417",
+                  appId: "1:155094312417:web:19e35e3699737be22cdea0"
             }; 
 
             const firebaseConfig = (userConfig.apiKey !== "TU_WKLEJ_API_KEY") ? userConfig : (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null);
@@ -155,19 +155,43 @@
         }
 
         // --- HELPERY FORMATOWANIA ---
-        // Generuje string z dodatkowymi parametrami czasu/przerw
-        const formatTimingInfo = (ex) => {
+        // Nowy format: reps (timeRep / restRep) x series (restSet) : load
+        const formatEx = (ex) => {
             const parts = [];
-            if (ex.timeRep) parts.push(`⏱ ${ex.timeRep}`);
-            if (ex.restRep) parts.push(`⏸ ${ex.restRep} (p)`);
-            if (ex.restSet) parts.push(`🛑 ${ex.restSet} (s)`);
-            return parts.join(' ');
+            
+            // 1. Reps (Powtórzenia)
+            if (ex.reps) parts.push(ex.reps);
+            
+            // 2 & 3. TimeRep / RestRep (Czas powt. / Przerwa powt.)
+            const t = ex.timeRep;
+            const r = ex.restRep;
+            if (t && r) parts.push(`(${t}/${r})`);
+            else if (t) parts.push(`(${t})`);
+            else if (r) parts.push(`(/${r})`);
+            
+            // "x" separator
+            parts.push('x');
+            
+            // 4. Series (Serie)
+            parts.push(ex.series || '?');
+            
+            // 5. Rest Set (Przerwa seria)
+            if (ex.restSet) parts.push(`(${ex.restSet})`);
+            
+            let res = parts.join(' ');
+            
+            // 6. Load (Trudność) - po dwukropku
+            if (ex.load && ex.load !== '-') {
+                res += ` : ${ex.load}`;
+            }
+            
+            return res;
         };
 
         // --- DANE DOMYŚLNE ---
         const INITIAL_EXERCISE_LIBRARY = [
             { id: 'ex_pull_australian', name: 'Podciąganie Australijskie', category: 'Siła', defaultSeries: 3, defaultReps: '5', defaultLoad: 'masy ciała', defaultTimeRep: '', defaultRestRep: '', defaultRestSet: '2m', defaultDescription: 'Dynamiczny ruch w górę, powolne opuszczanie.' },
-            { id: 'ex_plank', name: 'Plank Klasyczny', category: 'Core', defaultSeries: 5, defaultReps: '40s', defaultLoad: '-', defaultTimeRep: '', defaultRestRep: '20s', defaultRestSet: '', defaultDescription: 'Trzymaj napięty brzuch, nie opuszczaj bioder.' },
+            { id: 'ex_plank', name: 'Plank Klasyczny', category: 'Core', defaultSeries: 5, defaultReps: '40s', defaultLoad: '', defaultTimeRep: '', defaultRestRep: '20s', defaultRestSet: '', defaultDescription: 'Trzymaj napięty brzuch, nie opuszczaj bioder.' },
             { id: 'ex_hangboard_90', name: 'Zwis 90 stopni', category: 'Siła Palców', defaultSeries: 3, defaultReps: '10s', defaultLoad: 'masy ciała', defaultTimeRep: '', defaultRestRep: '', defaultRestSet: '3m', defaultDescription: 'Łokcie lekko zgięte, chwyt otwarty.' },
             { id: 'ex_climb_endurance', name: 'Obwody / Wytrzymałość', category: 'Wspinanie', defaultSeries: 1, defaultReps: '1', defaultLoad: '6a', defaultTimeRep: '', defaultRestRep: '', defaultRestSet: '', defaultDescription: 'Wspinanie ciągłe, staraj się odpoczywać na chwytach.' },
         ];
@@ -222,19 +246,13 @@
                                     </div>
                                     <div className="mt-3 space-y-2 pl-1 border-l-2 border-gray-100 group-hover:border-blue-100 transition">
                                         {t.exercises && t.exercises.slice(0, 2).map((ex, idx) => (
-                                            <div key={idx} className="flex flex-col">
-                                                <div className="flex justify-between items-center text-xs text-gray-500">
-                                                    <span>{exerciseLibrary.find(e => e.id === ex.exerciseId)?.name || 'Ćwiczenie'}</span>
-                                                    <div className="text-right">
-                                                        <span className="font-bold text-gray-400">{ex.series}x{ex.reps}</span>
-                                                        {ex.load && <span className="text-gray-300 font-normal ml-1">({ex.load})</span>}
-                                                    </div>
+                                            <div key={idx} className="flex flex-col mb-1">
+                                                <div className="flex justify-between items-start text-xs">
+                                                    <span className="font-bold text-gray-700">{exerciseLibrary.find(e => e.id === ex.exerciseId)?.name || 'Ćwiczenie'}</span>
                                                 </div>
-                                                {formatTimingInfo(ex) && (
-                                                    <div className="text-[10px] text-blue-400 mt-0.5 font-mono">
-                                                        {formatTimingInfo(ex)}
-                                                    </div>
-                                                )}
+                                                <div className="text-[11px] text-blue-600 font-mono mt-0.5">
+                                                    {formatEx(ex)}
+                                                </div>
                                             </div>
                                         ))}
                                         {t.exercises && t.exercises.length > 2 && <div className="text-[10px] text-gray-400 pt-1">+ {t.exercises.length - 2} więcej</div>}
@@ -349,44 +367,39 @@
                                         
                                         {/* Parameters Column */}
                                         <div className="col-span-5 space-y-2">
-                                            {/* Series / Reps */}
-                                            <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
-                                                <span className="text-gray-400">Plan:</span>
-                                                {isEditing ? (
-                                                    <div className="flex gap-1">
-                                                        <input value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} className="w-6 text-center bg-gray-50 rounded font-bold text-gray-600" />
-                                                        <span>x</span>
-                                                        <input value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} className="w-8 text-center bg-gray-50 rounded font-bold text-gray-600" />
+                                            {isEditing ? (
+                                                <>
+                                                    <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
+                                                        <span className="text-gray-400">Plan:</span>
+                                                        <div className="flex gap-1">
+                                                            <input value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} className="w-6 text-center bg-gray-50 rounded font-bold text-gray-600" />
+                                                            <span>x</span>
+                                                            <input value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} className="w-8 text-center bg-gray-50 rounded font-bold text-gray-600" />
+                                                        </div>
                                                     </div>
-                                                ) : <span className="font-bold text-gray-700">{ex.series}x{ex.reps}</span>}
-                                            </div>
-                                            
-                                            {/* Load */}
-                                            <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
-                                                <span className="text-gray-400">Trud:</span>
-                                                {isEditing ? <input value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} className="w-16 text-right bg-gray-50 rounded font-bold text-gray-600" /> : <span className="font-bold text-gray-700">{ex.load}</span>}
-                                            </div>
-
-                                            {/* Extra Time Params (Only show if values exist or editing) */}
-                                            {(isEditing || ex.timeRep || ex.restRep) && (
-                                                <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
-                                                     <span className="text-gray-400 flex items-center"><Clock size={10} className="mr-1"/> Czas/P:</span>
-                                                     {isEditing ? (
+                                                    <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
+                                                        <span className="text-gray-400">Trud:</span>
+                                                        <input value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} className="w-16 text-right bg-gray-50 rounded font-bold text-gray-600" />
+                                                    </div>
+                                                    <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
+                                                         <span className="text-gray-400 flex items-center"><Clock size={10} className="mr-1"/> Czas/P:</span>
                                                          <div className="flex gap-1 justify-end">
                                                             <input placeholder="s" title="Czas powtórzenia" value={ex.timeRep || ''} onChange={(e) => onUpdateExercise(training.id, idx, 'timeRep', e.target.value)} className="w-8 text-right bg-gray-50 rounded font-mono text-[10px]" />
                                                             <span className="text-gray-300">/</span>
                                                             <input placeholder="s" title="Przerwa między powtórzeniami" value={ex.restRep || ''} onChange={(e) => onUpdateExercise(training.id, idx, 'restRep', e.target.value)} className="w-8 text-right bg-gray-50 rounded font-mono text-[10px]" />
                                                          </div>
-                                                     ) : <span className="font-mono text-[10px] text-blue-500">{ex.timeRep}{ex.timeRep && ex.restRep ? '/' : ''}{ex.restRep}</span>}
+                                                    </div>
+                                                    <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
+                                                         <span className="text-gray-400">P.Serii:</span>
+                                                         <input value={ex.restSet || ''} onChange={(e) => onUpdateExercise(training.id, idx, 'restSet', e.target.value)} className="w-16 text-right bg-gray-50 rounded font-mono text-[10px]" placeholder="czas" />
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="flex justify-end pt-1">
+                                                    <span className="text-xs text-blue-600 font-mono text-right leading-tight">
+                                                        {formatEx(ex)}
+                                                    </span>
                                                 </div>
-                                            )}
-
-                                            {/* Rest Series (Only show if value exists or editing) */}
-                                            {(isEditing || ex.restSet) && (
-                                                 <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
-                                                     <span className="text-gray-400">P.Serii:</span>
-                                                     {isEditing ? <input value={ex.restSet || ''} onChange={(e) => onUpdateExercise(training.id, idx, 'restSet', e.target.value)} className="w-16 text-right bg-gray-50 rounded font-mono text-[10px]" placeholder="czas" /> : <span className="font-mono text-[10px] text-blue-500">{ex.restSet}</span>}
-                                                 </div>
                                             )}
                                         </div>
                                     </div>
@@ -472,16 +485,12 @@
                                         <div className="text-[10px] text-gray-400 w-16">{new Date(t.date).toLocaleDateString('pl-PL')}</div>
                                         <div className="text-xs text-gray-700 flex items-center gap-2">
                                             {getStatusIcon(ex.status)}
-                                            {ex.series}x{ex.reps}
                                         </div>
                                     </div>
-                                    <div className="text-xs text-gray-600 bg-gray-50 px-2 py-0.5 rounded">{ex.load}</div>
-                                </div>
-                                {formatTimingInfo(ex) && (
-                                    <div className="text-[9px] text-blue-400 font-mono ml-8 mt-1">
-                                        {formatTimingInfo(ex)}
+                                    <div className="text-xs text-blue-600 font-mono text-right">
+                                        {formatEx(ex)}
                                     </div>
-                                )}
+                                </div>
                             </div>
                         );
                     })}
@@ -504,6 +513,16 @@
                     <div className="space-y-3">
                         {library.map((ex, idx) => {
                             const isEditing = editingId === ex.id;
+                            
+                            // Adapter to reuse formatEx logic for Library defaults
+                            const displayEx = {
+                                reps: ex.defaultReps,
+                                timeRep: ex.defaultTimeRep,
+                                restRep: ex.defaultRestRep,
+                                series: ex.defaultSeries,
+                                restSet: ex.defaultRestSet,
+                                load: ex.defaultLoad
+                            };
                             
                             return (
                                 <Card key={ex.id} className="p-4 relative">
@@ -558,11 +577,8 @@
                                                 </div>
                                                 <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full inline-block mb-1">{ex.category}</span>
                                                 <p className="text-xs text-gray-500 leading-relaxed pr-8">{ex.defaultDescription || 'Brak opisu'}</p>
-                                                <div className="text-[10px] text-gray-400 font-bold mt-1 pt-1 border-t border-gray-50">
-                                                    Domyślnie: {ex.defaultSeries}x{ex.defaultReps} | {ex.defaultLoad}
-                                                    {ex.defaultTimeRep && ` | Czas: ${ex.defaultTimeRep}`}
-                                                    {ex.defaultRestRep && ` | P.powt: ${ex.defaultRestRep}`}
-                                                    {ex.defaultRestSet && ` | P.ser: ${ex.defaultRestSet}`}
+                                                <div className="text-[10px] text-blue-600 font-mono mt-1 pt-1 border-t border-gray-50">
+                                                    Domyślnie: {formatEx(displayEx)}
                                                 </div>
                                             </>
                                         )}
