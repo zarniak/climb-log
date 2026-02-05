@@ -73,12 +73,12 @@
             // KONFIGURACJA UŻYTKOWNIKA
             // ------------------------------------------------------------------
             const userConfig = {
-                  apiKey: "AIzaSyAgIGDQaKWHcBiEUwVavMOpj5TX5n81Bnw",
-                  authDomain: "climblog-7432b.firebaseapp.com",
-                  projectId: "climblog-7432b",
-                  storageBucket: "climblog-7432b.firebasestorage.app",
-                  messagingSenderId: "155094312417",
-                  appId: "1:155094312417:web:19e35e3699737be22cdea0"
+              apiKey: "AIzaSyAgIGDQaKWHcBiEUwVavMOpj5TX5n81Bnw",
+              authDomain: "climblog-7432b.firebaseapp.com",
+              projectId: "climblog-7432b",
+              storageBucket: "climblog-7432b.firebasestorage.app",
+              messagingSenderId: "155094312417",
+              appId: "1:155094312417:web:19e35e3699737be22cdea0"
             }; 
 
             const firebaseConfig = (userConfig.apiKey !== "TU_WKLEJ_API_KEY") ? userConfig : (typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null);
@@ -126,6 +126,7 @@
         const Check = (p) => <IconBase {...p}><polyline points="20 6 9 17 4 12"/></IconBase>;
         const AlertCircle = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></IconBase>;
         const X = (p) => <IconBase {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>;
+        const Clock = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase>;
 
         // --- KOMPONENTY UI ---
         function Card({ children, className = "" }) {
@@ -153,12 +154,22 @@
             );
         }
 
+        // --- HELPERY FORMATOWANIA ---
+        // Generuje string z dodatkowymi parametrami czasu/przerw
+        const formatTimingInfo = (ex) => {
+            const parts = [];
+            if (ex.timeRep) parts.push(`⏱ ${ex.timeRep}`);
+            if (ex.restRep) parts.push(`⏸ ${ex.restRep} (p)`);
+            if (ex.restSet) parts.push(`🛑 ${ex.restSet} (s)`);
+            return parts.join(' ');
+        };
+
         // --- DANE DOMYŚLNE ---
         const INITIAL_EXERCISE_LIBRARY = [
-            { id: 'ex_pull_australian', name: 'Podciąganie Australijskie', category: 'Siła', defaultSeries: 3, defaultReps: '5', defaultLoad: 'masy ciała', defaultDescription: 'Dynamiczny ruch w górę, powolne opuszczanie.' },
-            { id: 'ex_plank', name: 'Plank Klasyczny', category: 'Core', defaultSeries: 5, defaultReps: '40s', defaultLoad: '-', defaultDescription: 'Trzymaj napięty brzuch, nie opuszczaj bioder.' },
-            { id: 'ex_hangboard_90', name: 'Zwis 90 stopni', category: 'Siła Palców', defaultSeries: 3, defaultReps: '10s', defaultLoad: 'masy ciała', defaultDescription: 'Łokcie lekko zgięte, chwyt otwarty.' },
-            { id: 'ex_climb_endurance', name: 'Obwody / Wytrzymałość', category: 'Wspinanie', defaultSeries: 1, defaultReps: '1', defaultLoad: '6a', defaultDescription: 'Wspinanie ciągłe, staraj się odpoczywać na chwytach.' },
+            { id: 'ex_pull_australian', name: 'Podciąganie Australijskie', category: 'Siła', defaultSeries: 3, defaultReps: '5', defaultLoad: 'masy ciała', defaultTimeRep: '', defaultRestRep: '', defaultRestSet: '2m', defaultDescription: 'Dynamiczny ruch w górę, powolne opuszczanie.' },
+            { id: 'ex_plank', name: 'Plank Klasyczny', category: 'Core', defaultSeries: 5, defaultReps: '40s', defaultLoad: '-', defaultTimeRep: '', defaultRestRep: '20s', defaultRestSet: '', defaultDescription: 'Trzymaj napięty brzuch, nie opuszczaj bioder.' },
+            { id: 'ex_hangboard_90', name: 'Zwis 90 stopni', category: 'Siła Palców', defaultSeries: 3, defaultReps: '10s', defaultLoad: 'masy ciała', defaultTimeRep: '', defaultRestRep: '', defaultRestSet: '3m', defaultDescription: 'Łokcie lekko zgięte, chwyt otwarty.' },
+            { id: 'ex_climb_endurance', name: 'Obwody / Wytrzymałość', category: 'Wspinanie', defaultSeries: 1, defaultReps: '1', defaultLoad: '6a', defaultTimeRep: '', defaultRestRep: '', defaultRestSet: '', defaultDescription: 'Wspinanie ciągłe, staraj się odpoczywać na chwytach.' },
         ];
 
         const generateCalendarLink = (training) => {
@@ -209,14 +220,21 @@
                                         </div>
                                         {t.isCompleted ? <Badge type="success">Ukończony</Badge> : <Badge type="warning">Zaplanowany</Badge>}
                                     </div>
-                                    <div className="mt-3 space-y-1 pl-1 border-l-2 border-gray-100 group-hover:border-blue-100 transition">
+                                    <div className="mt-3 space-y-2 pl-1 border-l-2 border-gray-100 group-hover:border-blue-100 transition">
                                         {t.exercises && t.exercises.slice(0, 2).map((ex, idx) => (
-                                            <div key={idx} className="text-xs text-gray-500 flex justify-between items-center">
-                                                <span>{exerciseLibrary.find(e => e.id === ex.exerciseId)?.name || 'Ćwiczenie'}</span>
-                                                <div className="text-right">
-                                                    <span className="font-bold text-gray-400">{ex.series}x{ex.reps}</span>
-                                                    {ex.load && <span className="text-gray-300 font-normal ml-1">({ex.load})</span>}
+                                            <div key={idx} className="flex flex-col">
+                                                <div className="flex justify-between items-center text-xs text-gray-500">
+                                                    <span>{exerciseLibrary.find(e => e.id === ex.exerciseId)?.name || 'Ćwiczenie'}</span>
+                                                    <div className="text-right">
+                                                        <span className="font-bold text-gray-400">{ex.series}x{ex.reps}</span>
+                                                        {ex.load && <span className="text-gray-300 font-normal ml-1">({ex.load})</span>}
+                                                    </div>
                                                 </div>
+                                                {formatTimingInfo(ex) && (
+                                                    <div className="text-[10px] text-blue-400 mt-0.5 font-mono">
+                                                        {formatTimingInfo(ex)}
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                         {t.exercises && t.exercises.length > 2 && <div className="text-[10px] text-gray-400 pt-1">+ {t.exercises.length - 2} więcej</div>}
@@ -233,7 +251,6 @@
             if (!training) return null;
             const isCompleted = !!training.isCompleted;
 
-            // Helper to capitalize first letter only, keeping month lowercase if default locale does so
             const formatDate = (dateString) => {
                 const s = new Date(dateString).toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' });
                 return s.charAt(0).toUpperCase() + s.slice(1);
@@ -245,10 +262,8 @@
                     <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 border-b border-gray-100 px-4 py-3 flex items-center justify-between">
                         <button onClick={onClose} className="text-gray-400 hover:text-gray-800 flex items-center text-sm font-medium transition"><ChevronRight className="rotate-180 mr-1" size={18} /> Wróć</button>
                         <div className="flex items-center gap-3">
-                             {/* Delete available ALWAYS now */}
                              <button onClick={() => onDeleteTraining(training.id)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition"><Trash size={18} /></button>
                              
-                             {/* Pencil Edit Icon */}
                             <button onClick={onToggleEdit} className={`w-8 h-8 flex items-center justify-center rounded-full transition ${isEditing ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}>
                                 {isEditing ? <Check size={18} /> : <Pencil size={18} />}
                             </button>
@@ -289,7 +304,7 @@
                             </div>
                         </div>
 
-                        {/* Status Switcher (Single Clickable Button) */}
+                        {/* Status Switcher */}
                         <button
                             onClick={() => onUpdateTraining(training.id, 'isCompleted', !isCompleted)}
                             className={`w-full py-2 rounded-xl font-bold uppercase tracking-wide flex items-center justify-center transition border ${
@@ -327,10 +342,14 @@
                                     </div>
 
                                     <div className="grid grid-cols-12 gap-3 items-start mb-3">
+                                        {/* Description Column */}
                                         <div className="col-span-7">
-                                             {isEditing ? <textarea value={ex.description} onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded p-1.5 text-xs outline-none" rows="2" placeholder="Opis..." /> : <p className="text-xs text-gray-500 leading-relaxed">{ex.description}</p>}
+                                             {isEditing ? <textarea value={ex.description} onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded p-1.5 text-xs outline-none" rows="3" placeholder="Opis..." /> : <p className="text-xs text-gray-500 leading-relaxed">{ex.description}</p>}
                                         </div>
+                                        
+                                        {/* Parameters Column */}
                                         <div className="col-span-5 space-y-2">
+                                            {/* Series / Reps */}
                                             <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
                                                 <span className="text-gray-400">Plan:</span>
                                                 {isEditing ? (
@@ -341,10 +360,34 @@
                                                     </div>
                                                 ) : <span className="font-bold text-gray-700">{ex.series}x{ex.reps}</span>}
                                             </div>
+                                            
+                                            {/* Load */}
                                             <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
                                                 <span className="text-gray-400">Trud:</span>
                                                 {isEditing ? <input value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} className="w-16 text-right bg-gray-50 rounded font-bold text-gray-600" /> : <span className="font-bold text-gray-700">{ex.load}</span>}
                                             </div>
+
+                                            {/* Extra Time Params (Only show if values exist or editing) */}
+                                            {(isEditing || ex.timeRep || ex.restRep) && (
+                                                <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
+                                                     <span className="text-gray-400 flex items-center"><Clock size={10} className="mr-1"/> Czas/P:</span>
+                                                     {isEditing ? (
+                                                         <div className="flex gap-1 justify-end">
+                                                            <input placeholder="s" title="Czas powtórzenia" value={ex.timeRep || ''} onChange={(e) => onUpdateExercise(training.id, idx, 'timeRep', e.target.value)} className="w-8 text-right bg-gray-50 rounded font-mono text-[10px]" />
+                                                            <span className="text-gray-300">/</span>
+                                                            <input placeholder="s" title="Przerwa między powtórzeniami" value={ex.restRep || ''} onChange={(e) => onUpdateExercise(training.id, idx, 'restRep', e.target.value)} className="w-8 text-right bg-gray-50 rounded font-mono text-[10px]" />
+                                                         </div>
+                                                     ) : <span className="font-mono text-[10px] text-blue-500">{ex.timeRep}{ex.timeRep && ex.restRep ? '/' : ''}{ex.restRep}</span>}
+                                                </div>
+                                            )}
+
+                                            {/* Rest Series (Only show if value exists or editing) */}
+                                            {(isEditing || ex.restSet) && (
+                                                 <div className="flex justify-between text-xs border-b border-gray-50 pb-1">
+                                                     <span className="text-gray-400">P.Serii:</span>
+                                                     {isEditing ? <input value={ex.restSet || ''} onChange={(e) => onUpdateExercise(training.id, idx, 'restSet', e.target.value)} className="w-16 text-right bg-gray-50 rounded font-mono text-[10px]" placeholder="czas" /> : <span className="font-mono text-[10px] text-blue-500">{ex.restSet}</span>}
+                                                 </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -361,7 +404,6 @@
                                                 <X size={16} />
                                             </button>
                                         </div>
-                                        {/* WIDER FEEDBACK AREA */}
                                         <div className="flex-1">
                                              <input 
                                                 value={ex.actual || ''} 
@@ -421,18 +463,25 @@
                     {stats.length === 0 ? <div className="text-center py-10 text-gray-300 text-sm">Brak danych dla tego ćwiczenia.</div> : stats.map(t => {
                         const ex = t.exercises.find(e => e.exerciseId === statExId);
                         return (
-                            <div key={t.id} className="bg-white pl-3 py-2 pr-3 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center h-12">
-                                <div className="flex items-center gap-3">
-                                     <div title={t.isCompleted ? "Ukończony" : "Zaplanowany"} className="flex items-center">
-                                        {t.isCompleted ? <CheckCircle size={16} className="text-emerald-500"/> : <Calendar size={16} className="text-amber-500"/>}
+                            <div key={t.id} className="bg-white pl-3 py-2 pr-3 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-center min-h-[48px]">
+                                <div className="flex justify-between items-center w-full">
+                                    <div className="flex items-center gap-3">
+                                         <div title={t.isCompleted ? "Ukończony" : "Zaplanowany"} className="flex items-center">
+                                            {t.isCompleted ? <CheckCircle size={16} className="text-emerald-500"/> : <Calendar size={16} className="text-amber-500"/>}
+                                        </div>
+                                        <div className="text-[10px] text-gray-400 w-16">{new Date(t.date).toLocaleDateString('pl-PL')}</div>
+                                        <div className="text-xs text-gray-700 flex items-center gap-2">
+                                            {getStatusIcon(ex.status)}
+                                            {ex.series}x{ex.reps}
+                                        </div>
                                     </div>
-                                    <div className="text-[10px] text-gray-400 w-16">{new Date(t.date).toLocaleDateString('pl-PL')}</div>
-                                    <div className="text-xs text-gray-700 flex items-center gap-2">
-                                        {getStatusIcon(ex.status)}
-                                        {ex.series}x{ex.reps}
-                                    </div>
+                                    <div className="text-xs text-gray-600 bg-gray-50 px-2 py-0.5 rounded">{ex.load}</div>
                                 </div>
-                                <div className="text-xs text-gray-600 bg-gray-50 px-2 py-0.5 rounded">{ex.load}</div>
+                                {formatTimingInfo(ex) && (
+                                    <div className="text-[9px] text-blue-400 font-mono ml-8 mt-1">
+                                        {formatTimingInfo(ex)}
+                                    </div>
+                                )}
                             </div>
                         );
                     })}
@@ -491,10 +540,15 @@
                                                     <label className="text-[9px] uppercase font-bold text-gray-400">Opis domyślny</label>
                                                     <textarea value={ex.defaultDescription} onChange={(e) => onUpdate(ex.id, 'defaultDescription', e.target.value)} className="w-full text-xs border border-gray-200 rounded p-2 outline-none" rows="2" />
                                                 </div>
-                                                <div className="grid grid-cols-3 gap-2">
+                                                <div className="grid grid-cols-2 gap-2">
                                                     <div><label className="text-[9px] uppercase font-bold text-gray-400">Serie</label><input type="number" value={ex.defaultSeries} onChange={(e) => onUpdate(ex.id, 'defaultSeries', parseInt(e.target.value))} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" /></div>
                                                     <div><label className="text-[9px] uppercase font-bold text-gray-400">Powt.</label><input value={ex.defaultReps} onChange={(e) => onUpdate(ex.id, 'defaultReps', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" /></div>
                                                     <div><label className="text-[9px] uppercase font-bold text-gray-400">Trud.</label><input value={ex.defaultLoad} onChange={(e) => onUpdate(ex.id, 'defaultLoad', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" /></div>
+                                                    <div><label className="text-[9px] uppercase font-bold text-gray-400">P.Seria</label><input value={ex.defaultRestSet || ''} onChange={(e) => onUpdate(ex.id, 'defaultRestSet', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" placeholder="Czas" /></div>
+                                                </div>
+                                                 <div className="grid grid-cols-2 gap-2">
+                                                    <div><label className="text-[9px] uppercase font-bold text-gray-400">Czas/Powt</label><input value={ex.defaultTimeRep || ''} onChange={(e) => onUpdate(ex.id, 'defaultTimeRep', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" placeholder="Czas" /></div>
+                                                    <div><label className="text-[9px] uppercase font-bold text-gray-400">P.Powt</label><input value={ex.defaultRestRep || ''} onChange={(e) => onUpdate(ex.id, 'defaultRestRep', e.target.value)} className="w-full text-center text-xs bg-gray-50 border border-gray-200 rounded p-1.5 font-bold" placeholder="Czas" /></div>
                                                 </div>
                                             </>
                                         ) : (
@@ -506,6 +560,9 @@
                                                 <p className="text-xs text-gray-500 leading-relaxed pr-8">{ex.defaultDescription || 'Brak opisu'}</p>
                                                 <div className="text-[10px] text-gray-400 font-bold mt-1 pt-1 border-t border-gray-50">
                                                     Domyślnie: {ex.defaultSeries}x{ex.defaultReps} | {ex.defaultLoad}
+                                                    {ex.defaultTimeRep && ` | Czas: ${ex.defaultTimeRep}`}
+                                                    {ex.defaultRestRep && ` | P.powt: ${ex.defaultRestRep}`}
+                                                    {ex.defaultRestSet && ` | P.ser: ${ex.defaultRestSet}`}
                                                 </div>
                                             </>
                                         )}
@@ -621,7 +678,10 @@
                                      description: libEx.defaultDescription,
                                      series: libEx.defaultSeries,
                                      reps: libEx.defaultReps,
-                                     load: libEx.defaultLoad
+                                     load: libEx.defaultLoad,
+                                     timeRep: libEx.defaultTimeRep,
+                                     restRep: libEx.defaultRestRep,
+                                     restSet: libEx.defaultRestSet
                                  };
                              }
                         } else {
@@ -652,6 +712,9 @@
                                     series: defaultEx.defaultSeries || 3, 
                                     reps: defaultEx.defaultReps || '10', 
                                     load: defaultEx.defaultLoad || '-', 
+                                    timeRep: defaultEx.defaultTimeRep || '',
+                                    restRep: defaultEx.defaultRestRep || '',
+                                    restSet: defaultEx.defaultRestSet || '',
                                     actual: '',
                                     status: null // 'done', 'attention', 'skipped'
                                 }
@@ -702,7 +765,10 @@
                         description: defaultEx.defaultDescription || '', 
                         series: defaultEx.defaultSeries || 3, 
                         reps: defaultEx.defaultReps || '10', 
-                        load: defaultEx.defaultLoad || '-', 
+                        load: defaultEx.defaultLoad || '-',
+                        timeRep: defaultEx.defaultTimeRep || '',
+                        restRep: defaultEx.defaultRestRep || '',
+                        restSet: defaultEx.defaultRestSet || '',
                         actual: '',
                         status: null
                     }] 
@@ -732,6 +798,9 @@
                     defaultSeries: 3,
                     defaultReps: '10',
                     defaultLoad: '-',
+                    defaultRestSet: '',
+                    defaultTimeRep: '',
+                    defaultRestRep: '',
                     defaultDescription: ''
                 };
                 const newLib = [newEx, ...exerciseLibrary]; // Added to top
