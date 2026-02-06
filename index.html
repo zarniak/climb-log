@@ -585,6 +585,377 @@
             );
         }
 
+        function TrainingDetailView({ training, onClose, onUpdateTraining, onUpdateExercise, onAddExercise, onDeleteExercise, onDeleteTraining, exerciseLibrary, onStartTimer }) {
+            const [isHeaderEditing, setIsHeaderEditing] = useState(false);
+            const [editingExIndex, setEditingExIndex] = useState(null);
+
+            if (!training) return null;
+            const isCompleted = !!training.isCompleted;
+
+            return (
+                <div className="pb-24 animate-fade-in bg-white min-h-screen">
+                    {/* Header: Controls */}
+                    <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-800 flex items-center text-sm font-medium transition"><ChevronRight className="rotate-180 mr-1" size={18} /> Wróć</button>
+                        <div className="flex items-center gap-3">
+                             <button onClick={() => onDeleteTraining(training.id)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition"><Trash size={18} /></button>
+                             
+                            <button onClick={() => setIsHeaderEditing(!isHeaderEditing)} className={`w-8 h-8 flex items-center justify-center rounded-full transition ${isHeaderEditing ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}>
+                                {isHeaderEditing ? <Check size={18} /> : <Pencil size={18} />}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="p-4 space-y-4 max-w-md mx-auto">
+                        {/* Date & Location */}
+                        <div>
+                             <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                    {isHeaderEditing ? (
+                                        <input type="date" value={training.date} onChange={(e) => onUpdateTraining(training.id, 'date', e.target.value)} className="text-2xl font-bold text-gray-900 bg-transparent border-b border-gray-200 w-full outline-none" />
+                                    ) : (
+                                        <h1 className="text-2xl font-bold text-gray-900">{formatDatePretty(training.date)}</h1>
+                                    )}
+                                </div>
+                                {!isHeaderEditing && (
+                                    <a href={generateCalendarLink(training)} target="_blank" className="p-2 text-gray-400 hover:text-gray-600 transition">
+                                        <CalendarPlus size={24} />
+                                    </a>
+                                )}
+                            </div>
+                            
+                            <div className="flex items-center mt-2 text-gray-500 text-sm">
+                                <MapPin size={14} className="mr-1.5 text-blue-500" />
+                                {isHeaderEditing ? (
+                                    <input value={training.location} onChange={(e) => onUpdateTraining(training.id, 'location', e.target.value)} className="clean-input w-full text-sm" placeholder="Gdzie się wspinasz?" />
+                                ) : (
+                                    training.location ? (
+                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(training.location)}`} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-600">
+                                            {training.location}
+                                        </a>
+                                    ) : (
+                                        <span>Dodaj lokalizację</span>
+                                    )
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Status Switcher */}
+                        <button
+                            onClick={() => onUpdateTraining(training.id, 'isCompleted', !isCompleted)}
+                            className={`w-full py-2 rounded-xl font-bold uppercase tracking-wide flex items-center justify-center transition border ${
+                                isCompleted 
+                                ? 'bg-green-50 text-green-700 border-green-100 hover:bg-green-100' 
+                                : 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100'
+                            }`}
+                        >
+                            {isCompleted ? <><CheckCircle size={16} className="mr-2"/> Ukończony</> : <><Calendar size={16} className="mr-2"/> Zaplanowany</>}
+                        </button>
+
+                        {/* Coach Notes - Always Editable */}
+                        <div className="bg-yellow-50/50 border border-yellow-100 rounded-xl p-3">
+                            <div className="flex items-start gap-2">
+                                <MessageSquare size={16} className="text-yellow-600 mt-0.5 shrink-0" />
+                                <div className="w-full">
+                                    <span className="text-[10px] font-bold text-yellow-600 uppercase mb-1 block">Notatka Trenera</span>
+                                    <textarea 
+                                        value={training.coachNotes} 
+                                        onChange={(e) => onUpdateTraining(training.id, 'coachNotes', e.target.value)} 
+                                        className="w-full bg-yellow-100/30 border border-yellow-200/50 rounded p-2 text-xs outline-none focus:bg-white focus:border-yellow-400 transition" 
+                                        rows="2" 
+                                        placeholder="Wpisz cele / uwagi..." 
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Exercises List */}
+                        <div className="space-y-4 pt-2">
+                            {training.exercises && training.exercises.map((ex, idx) => {
+                                const libEx = exerciseLibrary.find(l => l.id === ex.exerciseId);
+                                const isEditingThis = editingExIndex === idx;
+
+                                const toggleStatus = (newStatus) => {
+                                    const next = ex.status === newStatus ? null : newStatus;
+                                    onUpdateExercise(training.id, idx, 'status', next);
+                                };
+
+                                // Check if timer is available for this exercise
+                                const canTimer = !isEditingThis && (parseTime(ex.timeRep) > 0 || parseTime(ex.restRep) > 0 || parseTime(ex.restSet) > 0);
+
+                                return (
+                                <div key={idx} className="bg-white border border-gray-100 rounded-xl p-4 relative shadow-sm hover:border-blue-200 transition">
+                                    {/* Indivudal Exercise Actions */}
+                                    <div className="absolute top-3 right-3 flex gap-2 z-10">
+                                        {isEditingThis ? (
+                                             <button onClick={() => setEditingExIndex(null)} className="w-6 h-6 flex items-center justify-center bg-blue-600 text-white rounded shadow-sm hover:bg-blue-700 transition">
+                                                <Check size={12} />
+                                             </button>
+                                        ) : (
+                                            <>
+                                                <button onClick={() => setEditingExIndex(idx)} className="p-1 text-gray-300 hover:text-blue-500 transition">
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button onClick={() => onDeleteExercise(training.id, idx)} className="p-1 text-gray-300 hover:text-red-500 transition">
+                                                    <Trash size={14} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                    
+                                    <div className={isEditingThis ? 'pr-20 mb-3' : 'pr-16 mb-1'}>
+                                        {isEditingThis ? (
+                                            <select value={ex.exerciseId} onChange={(e) => onUpdateExercise(training.id, idx, 'exerciseId', e.target.value)} className="w-full text-sm font-bold text-gray-800 bg-transparent border-b border-gray-200 outline-none pb-1">
+                                                {exerciseLibrary.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                                            </select>
+                                        ) : (
+                                            <h4 className="text-sm font-bold text-gray-800">{libEx?.name || 'Ćwiczenie'}</h4>
+                                        )}
+                                    </div>
+
+                                    {!isEditingThis && (
+                                        <div 
+                                            className={`flex justify-between items-baseline mb-3 ${canTimer ? 'cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 transition group' : ''}`}
+                                            onClick={() => canTimer && onStartTimer({ ...ex, name: libEx?.name || 'Trening' })}
+                                        >
+                                             <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{libEx?.category || 'Ogólne'}</span>
+                                             <div className="flex items-center gap-2">
+                                                 <span className={`text-xs text-gray-600 group-hover:underline`}>{formatEx(ex)}</span>
+                                                 {canTimer && <Clock size={12} className="text-gray-400 group-hover:text-red-500 transition" />}
+                                             </div>
+                                        </div>
+                                    )}
+
+                                    {/* Parameters Edit Row (Single Line) */}
+                                    {isEditingThis && (
+                                        <div className="flex flex-wrap items-center gap-1.5 mb-3 p-2 bg-gray-50/50 rounded-lg border border-gray-100">
+                                            <ParamInput label="Powtórzenia" width="w-8" value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} />
+                                            
+                                            <span className="text-gray-300 text-[10px]">(</span>
+                                            <ParamInput label="Czas powtórzenia" width="w-8" value={ex.timeRep} onChange={(e) => onUpdateExercise(training.id, idx, 'timeRep', e.target.value)} placeholder="t" />
+                                            <span className="text-gray-300 text-[10px]">/</span>
+                                            <ParamInput label="Przerwa między powt." width="w-8" value={ex.restRep} onChange={(e) => onUpdateExercise(training.id, idx, 'restRep', e.target.value)} placeholder="p" />
+                                            <span className="text-gray-300 text-[10px]">)</span>
+                                            
+                                            <span className="text-gray-400 text-xs font-bold">x</span>
+                                            
+                                            <ParamInput label="Ilość serii" width="w-8" value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} />
+                                            
+                                            <span className="text-gray-300 text-[10px]">(</span>
+                                            <ParamInput label="Przerwa między seriami" width="w-10" value={ex.restSet} onChange={(e) => onUpdateExercise(training.id, idx, 'restSet', e.target.value)} placeholder="czas" />
+                                            <span className="text-gray-300 text-[10px]">)</span>
+                                            
+                                            <span className="text-gray-400 text-xs font-bold">:</span>
+                                            
+                                            <ParamInput label="Trudność (Load)" width="w-full" wrapperClass="flex-1 min-w-[80px]" value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} />
+                                        </div>
+                                    )}
+
+                                    <div className="mb-3">
+                                         {isEditingThis ? <textarea value={ex.description} onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded p-1.5 text-xs outline-none" rows="3" placeholder="Opis..." /> : <p className="text-xs text-gray-500 leading-relaxed">{ex.description}</p>}
+                                    </div>
+                                    
+                                    {/* STATUS BUTTONS ROW */}
+                                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-50">
+                                        <div className="flex flex-col gap-1 shrink-0">
+                                            <button onClick={() => toggleStatus('done')} className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${ex.status === 'done' ? 'bg-emerald-500 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-emerald-50 hover:text-emerald-400'}`}>
+                                                <Check size={16} />
+                                            </button>
+                                            <button onClick={() => toggleStatus('attention')} className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${ex.status === 'attention' ? 'bg-amber-400 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-amber-50 hover:text-amber-400'}`}>
+                                                <AlertCircle size={16} />
+                                            </button>
+                                            <button onClick={() => toggleStatus('skipped')} className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${ex.status === 'skipped' ? 'bg-red-500 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-red-50 hover:text-red-400'}`}>
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                        <div className="flex-1">
+                                             <textarea 
+                                                value={ex.actual || ''} 
+                                                onChange={(e) => onUpdateExercise(training.id, idx, 'actual', e.target.value)} 
+                                                className="w-full h-[104px] px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-xs outline-none focus:border-blue-400 focus:bg-white transition resize-none" 
+                                                placeholder="Wynik / Feedback..." 
+                                             />
+                                        </div>
+                                    </div>
+                                </div>
+                                )})}
+                            
+                            <button onClick={() => onAddExercise(training.id)} className="w-full py-3 border border-dashed border-blue-200 rounded-xl text-blue-500 text-sm font-semibold flex items-center justify-center hover:bg-blue-50 transition"><Plus size={18} className="mr-2" /> Dodaj ćwiczenie</button>
+                        </div>
+
+                        {/* General Feedback / Summary - Always Editable */}
+                        <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 mt-4">
+                            <div className="flex items-start gap-2">
+                                <MessageSquare size={16} className="text-blue-600 mt-0.5 shrink-0" />
+                                <div className="w-full">
+                                    <span className="text-[10px] font-bold text-blue-600 uppercase mb-1 block">Podsumowanie treningu</span>
+                                    <textarea 
+                                        value={training.feedback || ''} 
+                                        onChange={(e) => onUpdateTraining(training.id, 'feedback', e.target.value)} 
+                                        className="w-full bg-blue-50/50 border border-blue-100 rounded p-2 text-xs outline-none focus:bg-white focus:border-blue-300 transition" 
+                                        rows="2" 
+                                        placeholder="Jak poszło? Wpisz tutaj swoje odczucia..." 
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function AnalyticsView({ trainings, exerciseLibrary }) {
+            const [statExId, setStatExId] = useState(exerciseLibrary[0]?.id || '');
+            const stats = trainings.filter(t => t.exercises && t.exercises.some(e => e.exerciseId === statExId)).sort((a, b) => new Date(b.date) - new Date(a.date));
+            const selectedExInfo = exerciseLibrary.find(e => e.id === statExId);
+
+            return (
+                <div className="p-4 pt-6 pb-24 animate-fade-in max-w-md mx-auto">
+                    <Header title="Twój Postęp" icon={TrendingUp} />
+                    
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Wybierz Ćwiczenie</label>
+                        <select value={statExId} onChange={(e) => setStatExId(e.target.value)} className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 outline-none text-sm text-gray-700">{exerciseLibrary.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}</select>
+                    </div>
+
+                    <div className="space-y-3">
+                    {stats.length === 0 ? <div className="text-center py-10 text-gray-300 text-sm">Brak danych dla tego ćwiczenia.</div> : stats.map(t => {
+                        const ex = t.exercises.find(e => e.exerciseId === statExId);
+                        return (
+                            <div key={t.id} className="bg-white pl-3 py-3 pr-3 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-center">
+                                <div className="flex justify-between items-center w-full mb-1">
+                                    <div className="flex items-center gap-3">
+                                         <div title={t.isCompleted ? "Ukończony" : "Zaplanowany"} className="flex items-center">
+                                            {t.isCompleted ? <CheckCircle size={16} className="text-emerald-500"/> : <Calendar size={16} className="text-amber-500"/>}
+                                        </div>
+                                        <div className="text-sm text-gray-500">{formatDateShort(t.date)}</div>
+                                        <div className="flex items-center gap-2">
+                                            {getStatusIconLarge(ex.status)}
+                                        </div>
+                                    </div>
+                                    <span className="text-xs text-gray-600 font-mono text-right">{formatEx(ex)}</span>
+                                </div>
+                                {ex.actual && (
+                                    <div className="text-[10px] text-gray-500 italic border-t border-gray-50 pt-1 mt-1">
+                                        {ex.actual}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                    </div>
+                </div>
+            );
+        }
+
+        function ExercisesView({ library, onUpdate, onAdd, onDelete }) {
+            const [editingId, setEditingId] = useState(null);
+
+            return (
+                <div className="p-4 pt-6 pb-24 animate-fade-in max-w-md mx-auto">
+                    <Header 
+                        title="Baza Ćwiczeń" 
+                        icon={ClipboardList} 
+                        action={<button onClick={onAdd} className="bg-blue-600 text-white w-10 h-10 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center"><Plus size={24} /></button>}
+                    />
+                    
+                    <div className="space-y-3">
+                        {library.map((ex, idx) => {
+                            const isEditing = editingId === ex.id;
+                            
+                            // Adapter to reuse formatEx logic for Library defaults
+                            const displayEx = {
+                                reps: ex.defaultReps,
+                                timeRep: ex.defaultTimeRep,
+                                restRep: ex.defaultRestRep,
+                                series: ex.defaultSeries,
+                                restSet: ex.defaultRestSet,
+                                load: ex.defaultLoad
+                            };
+                            
+                            return (
+                                <Card key={ex.id} className="p-4 relative">
+                                    {/* Action Buttons */}
+                                    <div className="absolute top-3 right-3 flex gap-2 z-10">
+                                        {isEditing ? (
+                                            <button onClick={() => setEditingId(null)} className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-full shadow-md transition">
+                                                <Check size={16} />
+                                            </button>
+                                        ) : (
+                                            <>
+                                                <button onClick={() => setEditingId(ex.id)} className="p-1.5 text-gray-300 hover:text-blue-500 transition">
+                                                    <Pencil size={18} />
+                                                </button>
+                                                <button onClick={() => onDelete(ex.id)} className="p-1.5 text-gray-300 hover:text-red-500 transition">
+                                                    <Trash size={18} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+
+                                    <div className={isEditing ? 'pr-1 space-y-3' : 'space-y-1'}>
+                                        {isEditing ? (
+                                            <>
+                                                <div>
+                                                    <label className="text-[9px] uppercase font-bold text-gray-400">Nazwa</label>
+                                                    <input value={ex.name} onChange={(e) => onUpdate(ex.id, 'name', e.target.value)} className="clean-input w-full text-sm font-bold pb-1" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] uppercase font-bold text-gray-400">Kategoria</label>
+                                                    <input value={ex.category} onChange={(e) => onUpdate(ex.id, 'category', e.target.value)} className="clean-input w-full text-xs pb-1" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[9px] uppercase font-bold text-gray-400">Opis domyślny</label>
+                                                    <textarea value={ex.defaultDescription} onChange={(e) => onUpdate(ex.id, 'defaultDescription', e.target.value)} className="w-full text-xs border border-gray-200 rounded p-2 outline-none" rows="2" />
+                                                </div>
+                                                
+                                                {/* Single Line Parameter Edit */}
+                                                <div>
+                                                     <label className="text-[9px] uppercase font-bold text-gray-400 mb-1 block">Parametry Domyślne</label>
+                                                     <div className="flex flex-wrap items-center gap-1.5 p-2 bg-gray-50/50 rounded-lg border border-gray-100">
+                                                        <ParamInput label="Powtórzenia" width="w-8" value={ex.defaultReps} onChange={(e) => onUpdate(ex.id, 'defaultReps', e.target.value)} />
+                                                        
+                                                        <span className="text-gray-300 text-[10px]">(</span>
+                                                        <ParamInput label="Czas powtórzenia" width="w-8" value={ex.defaultTimeRep} onChange={(e) => onUpdate(ex.id, 'defaultTimeRep', e.target.value)} placeholder="t" />
+                                                        <span className="text-gray-300 text-[10px]">/</span>
+                                                        <ParamInput label="Przerwa między powt." width="w-8" value={ex.defaultRestRep} onChange={(e) => onUpdate(ex.id, 'defaultRestRep', e.target.value)} placeholder="p" />
+                                                        <span className="text-gray-300 text-[10px]">)</span>
+                                                        
+                                                        <span className="text-gray-400 text-xs font-bold">x</span>
+                                                        
+                                                        <ParamInput label="Ilość serii" width="w-8" value={ex.defaultSeries} onChange={(e) => onUpdate(ex.id, 'defaultSeries', e.target.value)} />
+                                                        
+                                                        <span className="text-gray-300 text-[10px]">(</span>
+                                                        <ParamInput label="Przerwa między seriami" width="w-10" value={ex.defaultRestSet} onChange={(e) => onUpdate(ex.id, 'defaultRestSet', e.target.value)} placeholder="czas" />
+                                                        <span className="text-gray-300 text-[10px]">)</span>
+                                                        
+                                                        <span className="text-gray-400 text-xs font-bold">:</span>
+                                                        
+                                                        <ParamInput label="Trudność (Load)" width="w-full" wrapperClass="flex-1 min-w-[80px]" value={ex.defaultLoad} onChange={(e) => onUpdate(ex.id, 'defaultLoad', e.target.value)} />
+                                                    </div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="flex justify-between items-start pr-16">
+                                                    <h3 className="font-bold text-gray-800 text-sm">{ex.name}</h3>
+                                                </div>
+                                                <div className="flex justify-between items-baseline mb-2 mt-1">
+                                                    <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{ex.category}</span>
+                                                    <span className="text-xs text-gray-600">{formatEx(displayEx)}</span>
+                                                </div>
+                                                <p className="text-xs text-gray-500 leading-relaxed pr-8">{ex.defaultDescription || 'Brak opisu'}</p>
+                                            </>
+                                        )}
+                                    </div>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
         // --- GŁÓWNA APLIKACJA ---
 
         function App() {
@@ -677,12 +1048,25 @@
                     const next = prev.map(t => {
                         if (t.id !== id) return t;
                         const newEx = [...t.exercises];
+
+                        // Logic for changing exercise type and updating defaults
                         if (field === 'exerciseId') {
                              const libEx = exerciseLibrary.find(e => e.id === value);
                              if (libEx) {
-                                 newEx[idx] = { ...newEx[idx], exerciseId: value, description: libEx.defaultDescription, series: libEx.defaultSeries, reps: libEx.defaultReps, load: libEx.defaultLoad, timeRep: libEx.defaultTimeRep, restRep: libEx.defaultRestRep, restSet: libEx.defaultRestSet };
+                                 newEx[idx] = {
+                                     ...newEx[idx],
+                                     exerciseId: value,
+                                     description: libEx.defaultDescription,
+                                     series: libEx.defaultSeries,
+                                     reps: libEx.defaultReps,
+                                     load: libEx.defaultLoad,
+                                     timeRep: libEx.defaultTimeRep,
+                                     restRep: libEx.defaultRestRep,
+                                     restSet: libEx.defaultRestSet
+                                 };
                              }
                         } else {
+                            // Standard update
                             newEx[idx] = { ...newEx[idx], [field]: value };
                         }
                         return { ...t, exercises: newEx };
@@ -697,8 +1081,26 @@
                 setTrainings(prev => {
                     const next = prev.map(t => {
                         if (t.id !== id) return t;
+                        const currentExercises = Array.isArray(t.exercises) ? t.exercises : [];
                         const defaultEx = exerciseLibrary[0] || {};
-                        return { ...t, exercises: [...(t.exercises||[]), { exerciseId: defaultEx.id || 'unknown', description: defaultEx.defaultDescription || '', series: defaultEx.defaultSeries || 3, reps: defaultEx.defaultReps || '10', load: defaultEx.defaultLoad || '-', timeRep: defaultEx.defaultTimeRep || '', restRep: defaultEx.defaultRestRep || '', restSet: defaultEx.defaultRestSet || '', actual: '', status: null }] };
+                        return { 
+                            ...t, 
+                            exercises: [
+                                ...currentExercises, 
+                                { 
+                                    exerciseId: defaultEx.id || 'unknown', 
+                                    description: defaultEx.defaultDescription || '', 
+                                    series: defaultEx.defaultSeries || 3, 
+                                    reps: defaultEx.defaultReps || '10', 
+                                    load: defaultEx.defaultLoad || '-', 
+                                    timeRep: defaultEx.defaultTimeRep || '',
+                                    restRep: defaultEx.defaultRestRep || '',
+                                    restSet: defaultEx.defaultRestSet || '',
+                                    actual: '',
+                                    status: null // 'done', 'attention', 'skipped'
+                                }
+                            ] 
+                        };
                     });
                     const updated = next.find(t => t.id === id);
                     if (updated) saveTrainingToDb(updated);
@@ -732,11 +1134,32 @@
             const handleAddT = async () => {
                 const newId = Date.now();
                 const defaultEx = exerciseLibrary[0] || {};
-                const newT = { id: newId, date: new Date().toISOString().split('T')[0], location: '', isCompleted: false, feedback: '', coachNotes: '', exercises: [{ exerciseId: defaultEx.id || 'unknown', description: defaultEx.defaultDescription || '', series: defaultEx.defaultSeries || 3, reps: defaultEx.defaultReps || '10', load: defaultEx.defaultLoad || '-', timeRep: defaultEx.defaultTimeRep || '', restRep: defaultEx.defaultRestRep || '', restSet: defaultEx.defaultRestSet || '', actual: '', status: null }] };
+                const newT = { 
+                    id: newId, 
+                    date: new Date().toISOString().split('T')[0], 
+                    location: '', 
+                    isCompleted: false, 
+                    feedback: '', 
+                    coachNotes: '', 
+                    exercises: [{ 
+                        exerciseId: defaultEx.id || 'unknown', 
+                        description: defaultEx.defaultDescription || '', 
+                        series: defaultEx.defaultSeries || 3, 
+                        reps: defaultEx.defaultReps || '10', 
+                        load: defaultEx.defaultLoad || '-',
+                        timeRep: defaultEx.defaultTimeRep || '',
+                        restRep: defaultEx.defaultRestRep || '',
+                        restSet: defaultEx.defaultRestSet || '',
+                        actual: '',
+                        status: null
+                    }] 
+                };
+                
                 if (user && window.firestoreOps) {
                     const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', newId.toString());
                     await window.firestoreOps.setDoc(ref, newT);
                 }
+                
                 setTrainings(p => [newT, ...p]);
                 setSelectedId(newId);
             };
@@ -748,8 +1171,19 @@
             };
 
             const handleAddLib = () => {
-                const newEx = { id: `ex_${Date.now()}`, name: 'Nowe Ćwiczenie', category: 'Ogólne', defaultSeries: 3, defaultReps: '10', defaultLoad: '-', defaultRestSet: '', defaultTimeRep: '', defaultRestRep: '', defaultDescription: '' };
-                const newLib = [newEx, ...exerciseLibrary];
+                const newEx = {
+                    id: `ex_${Date.now()}`,
+                    name: 'Nowe Ćwiczenie',
+                    category: 'Ogólne',
+                    defaultSeries: 3,
+                    defaultReps: '10',
+                    defaultLoad: '-',
+                    defaultRestSet: '',
+                    defaultTimeRep: '',
+                    defaultRestRep: '',
+                    defaultDescription: ''
+                };
+                const newLib = [newEx, ...exerciseLibrary]; // Added to top
                 setExerciseLibrary(newLib);
                 saveLibraryToDb(newLib);
             };
@@ -785,12 +1219,7 @@
                             onStartTimer={handleStartTimer}
                         />
                     ) : activeTab === 'trainings' ? (
-                        <TrainingListView 
-                            trainings={trainings} 
-                            onSelect={(id) => { setSelectedId(id); }} 
-                            onAdd={handleAddT} 
-                            exerciseLibrary={exerciseLibrary} 
-                        />
+                        <TrainingListView trainings={trainings} onSelect={(id) => { setSelectedId(id); }} onAdd={handleAddT} exerciseLibrary={exerciseLibrary} />
                     ) : activeTab === 'analytics' ? (
                         <AnalyticsView trainings={trainings} exerciseLibrary={exerciseLibrary} />
                     ) : (
