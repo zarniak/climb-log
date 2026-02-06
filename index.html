@@ -804,27 +804,24 @@
                                     {/* Parameters Edit Row (Multi Line) */}
                                     {isEditingThis && (
                                         <div className="bg-gray-50/50 rounded-lg border border-gray-100 p-2 mb-3">
-                                            {/* Row 1: Metrics */}
-                                            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                                            <div className="flex flex-wrap items-center gap-1.5">
                                                 <ParamInput label="Powtórzenia" width="w-14" value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} />
                                                 <span className="text-gray-500 font-bold text-sm">(</span>
                                                 <ParamInput label="Czas" width="w-14" value={ex.timeRep} onChange={(e) => onUpdateExercise(training.id, idx, 'timeRep', e.target.value)} placeholder="t" />
                                                 <span className="text-gray-500 font-bold text-sm">/</span>
                                                 <ParamInput label="Przerwa" width="w-14" value={ex.restRep} onChange={(e) => onUpdateExercise(training.id, idx, 'restRep', e.target.value)} placeholder="p" />
                                                 <span className="text-gray-500 font-bold text-sm">)</span>
-                                                <span className="text-gray-600 font-bold text-sm mx-1">x</span>
+                                                <span className="text-gray-600 font-bold text-sm mx-0.5">x</span>
                                                 <ParamInput label="Serie" width="w-14" value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} />
                                                 <span className="text-gray-500 font-bold text-sm">(</span>
                                                 <ParamInput label="Przerwa serii" width="w-20" value={ex.restSet} onChange={(e) => onUpdateExercise(training.id, idx, 'restSet', e.target.value)} placeholder="czas" />
                                                 <span className="text-gray-500 font-bold text-sm">)</span>
-                                            </div>
-                                            
-                                            {/* Row 2: Load - Full Width explicitly */}
-                                            <div className="pt-1 border-t border-gray-100">
+                                                <span className="text-gray-600 font-bold text-sm mx-0.5">:</span>
+                                                
                                                 <input 
                                                     value={ex.load || ''} 
                                                     onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)}
-                                                    className="w-full bg-white border border-gray-200 rounded h-8 px-2 text-xs text-gray-700 outline-none focus:border-blue-400 transition"
+                                                    className="w-full bg-white border border-gray-200 rounded h-8 px-2 text-xs text-gray-700 outline-none focus:border-blue-400 transition mt-1"
                                                     placeholder="Obciążenie / Trudność (np. masy ciała, +5kg)"
                                                 />
                                             </div>
