@@ -1,147 +1,69 @@
-ClimbLog 🧗‍♂️
+# ClimbLog 🧗‍♂️
 
-Online Climbing Coach – By a climber, for a climber.
+**Online Climbing Coach – By a climber, for a climber.**
 
-ClimbLog is a free, open-source Single Page Application (SPA) designed for planning, monitoring, and analyzing climbing workouts. The project focuses on simplicity and accessibility – it requires no complex installation, and the entire code resides in a single file, making it incredibly easy to modify and host.
+ClimbLog is a free, open-source Single Page Application (SPA) for planning and analyzing climbing workouts. Built for simplicity, it requires no complex installation; the entire code resides in a single file, making modification and hosting effortless.
 
-🌟 Key Features
+## 🌟 Key Features
 
-Workout Planning: Schedule training sessions by date and location (e.g., gym names).
+* **Workout Planning:** Schedule sessions by date and location.
+* **Interactive Timer:** Built-in interval timer handling work/rest phases with audio cues.
+* **Exercise Database:** Editable library with customizable defaults (sets, reps, load).
+* **Progress Tracking:** Workout history and exercise-specific analytics.
+* **Coach Notes:** Dedicated space for goals and feedback.
+* **Cloud Sync:** Firebase integration for secure, cross-device data access.
 
-Interactive Timer: Built-in timer handling complex intervals (work time, rest between reps, rest between sets) with audio cues.
+## 🛠 Tech Stack
 
-Exercise Database: Editable library of exercises with customizable default parameters (sets, reps, load).
+Uses a modern "No-Build" approach (no Node.js required):
 
-Progress Tracking: History of completed workouts and analytics for specific exercises.
+* **Frontend:** HTML5 + React 18 (via CDN).
+* **Styling:** Tailwind CSS (via CDN).
+* **Compilation:** Babel Standalone for in-browser JSX.
+* **Backend:** Google Firebase (Firestore + Authentication).
+* **Audio:** Web Audio API (no external audio files).
 
-Coach Notes: Dedicated space for training goals and feedback.
+## 🚀 How to Run
 
-Cloud Sync: Integrated with Google Firebase to keep your data safe and accessible across devices.
+Since the app is a single `index.html` file, installation is trivial.
 
-🛠 Tech Stack
+### Option 1: Local Run
 
-The application uses a modern "No-Build" approach, meaning it runs without compilers, Node.js, or complex development environments.
+Download `index.html` and open it in any modern web browser.
 
-Frontend: HTML5 + React 18 (loaded via CDN).
+### Option 2: Free Hosting (Recommended)
 
-Styling: Tailwind CSS (loaded via CDN).
+For mobile access, host the file on a static service like **GitHub Pages**, **Render**, **Netlify**, or via FTP on your own server.
 
-On-the-fly Compilation: Babel (Standalone) – compiles JSX directly in the browser.
+## 🔥 Database Configuration (Firebase)
 
-Backend (BaaS): Google Firebase (Firestore Database + Authentication).
+Create a free Google Firebase project to save your data (approx. 3 mins).
 
-Audio: Web Audio API (generates timer sounds without external MP3 files).
+1. **Create Project:** Go to [Firebase Console](https://console.firebase.google.com/) and create a new project.
+2. **Enable Database:** Go to **Build -> Firestore Database**, create a database (e.g., in `eur3`), and select **Start in production mode**.
+3. **Enable Auth:** Go to **Build -> Authentication**, select **Get started**, enable **Anonymous** sign-in, and save.
+4. **Get API Keys:** In Project Settings (gear icon), register a **Web** app. Copy the values from the `firebaseConfig` object and paste them into `index.html` inside the `userConfig` object (around line 67).
 
-🚀 How to Run (Installation & Hosting)
+## 🔒 Security Rules
 
-Since the app is just a single index.html file, "installation" is trivial.
+To prevent unauthorized data access, go to **Firestore Database -> Rules**, replace the existing code with the following, and click **Publish**:
 
-Option 1: Local Run
-
-Download the index.html file.
-
-Open it in any modern web browser.
-
-Done! (Remember to configure Firebase as described below).
-
-Option 2: Free Hosting (Recommended)
-
-To access the app from your phone at the gym, host it on a free static file hosting service.
-
-GitHub Pages: Upload the file to a repository and enable Pages in settings.
-
-Render / Netlify / Vercel: Simply drag & drop the file or connect your Git repository.
-
-Own Server: Upload via FTP.
-
-🔥 Database Configuration (Firebase)
-
-To save your workouts, you need to create a free Google Firebase project. It takes about 3 minutes.
-
-Step 1: Create a Project
-
-Go to Firebase Console.
-
-Click "Add project".
-
-Name your project (e.g., ClimbLog-YourName).
-
-You can disable Google Analytics.
-
-Click Create project.
-
-Step 2: Enable Database (Firestore)
-
-In the left panel, go to Build -> Firestore Database.
-
-Click Create database.
-
-Select a location (e.g., eur3 - Europe West).
-
-Select Start in production mode.
-
-Step 3: Enable Authentication
-
-The app uses "Anonymous Authentication" to secure data against unauthorized external access.
-
-In the left panel, go to Build -> Authentication.
-
-Click Get started.
-
-Select Anonymous from the Sign-in method list.
-
-Toggle Enable and click Save.
-
-Step 4: Get API Keys
-
-Click the gear icon (Project settings) next to "Project Overview".
-
-Under "Your apps", click the Web icon (</>).
-
-Register the app (e.g., ClimbLog Web).
-
-You will see a configuration object (const firebaseConfig = { ... }).
-
-Copy the values (apiKey, authDomain, projectId, etc.) and paste them into the index.html file inside the userConfig object (around line 67).
-
-🔒 Security Rules
-
-This is a crucial step to prevent unauthorized users from deleting your data.
-
-In the Firebase Console, go to Firestore Database -> Rules.
-
-Delete existing rules and paste the following code:
-
+```javascript
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper check for signed-in users (app handles this automatically)
+    function isSignedIn() { return request.auth != null; }
 
-    // Helper function to check if user is signed in (app does this automatically)
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Allow access to data only for signed-in app users
+    // Allow access only to signed-in app users
     match /artifacts/{appId}/public/data/{document=**} {
       allow read, write: if isSignedIn();
     }
     
-    // Block access to everything else
+    // Block all other access
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
-
-
-Click Publish.
-
-Additional Security (Optional)
-
-In the Google Cloud Console, you can edit your Browser key and add Website restrictions (e.g., your-site.netlify.app). This ensures your API key cannot be used on other domains.
-
-📄 License
-
-This project is licensed under the MIT License. Feel free to modify, use, and share it with friends.
-Happy climbing! 💪
