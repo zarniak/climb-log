@@ -347,12 +347,12 @@
                         repsIdx: r 
                     });
                     
-                    // REST REP
-                    if (r < reps) {
+                    // REST REP - Only if time is provided
+                    if (r < reps && restRep > 0) {
                         steps.push({ 
                             type: 'rest_rep', 
-                            duration: restRep > 0 ? restRep : 0, 
-                            manual: restRep <= 0,
+                            duration: restRep, 
+                            manual: false,
                             label: `Przerwa (S:${s}/${series})`, 
                             color: 'bg-blue-500', 
                             text: 'text-blue-100', 
@@ -363,12 +363,12 @@
                     }
                 }
                 
-                // REST SET
-                if (s < series) {
+                // REST SET - Only if time is provided
+                if (s < series && restSet > 0) {
                     steps.push({ 
                         type: 'rest_set', 
-                        duration: restSet > 0 ? restSet : 0, 
-                        manual: restSet <= 0,
+                        duration: restSet, 
+                        manual: false,
                         label: 'Przerwa między seriami', 
                         color: 'bg-amber-500', 
                         text: 'text-amber-100', 
@@ -822,7 +822,7 @@
                                             
                                             <span className="text-gray-400 text-xs font-bold">:</span>
                                             
-                                            <ParamInput label="Trudność (Load)" width="w-full" wrapperClass="flex-1 min-w-[80px]" value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} />
+                                            <ParamInput label="Trudność (Load)" width="w-full" wrapperClass="flex-1 min-w-[80px]" value={ex.defaultLoad} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} />
                                         </div>
                                     )}
 
