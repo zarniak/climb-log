@@ -125,6 +125,8 @@
         const Play = (p) => <IconBase {...p}><polygon points="5 3 19 12 5 21 5 3"/></IconBase>;
         const Pause = (p) => <IconBase {...p}><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></IconBase>;
         const RotateCcw = (p) => <IconBase {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/><path d="M3 3v9h9"/></IconBase>;
+        const SkipBack = (p) => <IconBase {...p}><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></IconBase>;
+        const SkipForward = (p) => <IconBase {...p}><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></IconBase>;
 
         // --- KOMPONENTY UI ---
         function Card({ children, className = "" }) {
@@ -252,6 +254,75 @@
             return parseFloat(str) || 0;
         };
 
+        // --- AUDIO ENGINE (Web Audio API) ---
+        const SoundEngine = {
+            ctx: null,
+            init: function() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            playTone: function(freq, type, duration, vol = 0.1) {
+                if (!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+            playTick: function() {
+                this.playTone(800, 'sine', 0.1, 0.1);
+            },
+            playWhistle: function() {
+                // Symulacja gwizdka (Work start)
+                if (!this.ctx) this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(1500, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(2500, this.ctx.currentTime + 0.1);
+                osc.frequency.linearRampToValueAtTime(1500, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            },
+            playGong: function(deep = false) {
+                // Gong (Rest start)
+                const freq = deep ? 220 : 440;
+                const dur = deep ? 1.5 : 0.8;
+                this.playTone(freq, 'sine', dur, 0.15);
+            },
+            playFanfare: function() {
+                // Victory!
+                const now = this.ctx.currentTime;
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C E G C
+                notes.forEach((freq, i) => {
+                     const osc = this.ctx.createOscillator();
+                     const gain = this.ctx.createGain();
+                     osc.type = 'square';
+                     osc.frequency.value = freq;
+                     gain.gain.setValueAtTime(0.05, now + i*0.15);
+                     gain.gain.exponentialRampToValueAtTime(0.001, now + i*0.15 + 0.4);
+                     osc.connect(gain);
+                     gain.connect(this.ctx.destination);
+                     osc.start(now + i*0.15);
+                     osc.stop(now + i*0.15 + 0.5);
+                });
+            }
+        };
+
+
         // --- TIMER GENERATOR ---
         const generateTimerSteps = (ex) => {
             const steps = [];
@@ -335,33 +406,51 @@
             const [currentStepIndex, setCurrentStepIndex] = useState(0);
             const [timeLeft, setTimeLeft] = useState(0);
             const [isRunning, setIsRunning] = useState(false);
-            const [hasStarted, setHasStarted] = useState(false);
-            const audioRef = useRef(null);
-
+            
+            // Effect to initialize steps
             useEffect(() => {
                 if (timerData) {
                     const generatedSteps = generateTimerSteps(timerData);
                     setSteps(generatedSteps);
                     if (generatedSteps.length > 0) {
                         setTimeLeft(generatedSteps[0].duration);
-                        setIsRunning(true); // Auto-start
-                        setHasStarted(true);
+                        setIsRunning(true);
+                        SoundEngine.init(); // Pre-init audio context on load
                     }
                 }
             }, [timerData]);
 
+            // Effect to handle sounds on step change or tick
+            const playStepSound = (type) => {
+                if(type === 'work') SoundEngine.playWhistle();
+                else if(type === 'rest_rep') SoundEngine.playGong(false);
+                else if(type === 'rest_set') SoundEngine.playGong(true);
+                else if(type === 'done') SoundEngine.playFanfare();
+            };
+
             useEffect(() => {
                 let interval = null;
                 if (isRunning && currentStepIndex < steps.length) {
+                    // First enter step sound? Handled by transition logic mostly.
+                    
                     interval = setInterval(() => {
                         setTimeLeft((prev) => {
+                            // Ticking sound for last 3 seconds (3, 2, 1)
+                            if (prev <= 4 && prev > 1) {
+                                SoundEngine.playTick();
+                            }
+
                             if (prev <= 1) {
-                                // Next Step
+                                // Next Step Logic
                                 const nextIndex = currentStepIndex + 1;
                                 if (nextIndex < steps.length) {
                                     setCurrentStepIndex(nextIndex);
-                                    return steps[nextIndex].duration;
+                                    const nextStep = steps[nextIndex];
+                                    playStepSound(nextStep.type);
+                                    return nextStep.duration;
                                 } else {
+                                    // Finished
+                                    playStepSound('done');
                                     setIsRunning(false);
                                     return 0;
                                 }
@@ -381,6 +470,35 @@
                 setCurrentStepIndex(0);
                 if (steps.length > 0) setTimeLeft(steps[0].duration);
             };
+
+            const handleNext = () => {
+                const nextIndex = currentStepIndex + 1;
+                if (nextIndex < steps.length) {
+                    setCurrentStepIndex(nextIndex);
+                    setTimeLeft(steps[nextIndex].duration);
+                } else {
+                    // Go to done
+                     setCurrentStepIndex(steps.length - 1);
+                     setTimeLeft(0);
+                     setIsRunning(false);
+                }
+            };
+
+            const handlePrev = () => {
+                const prevIndex = currentStepIndex - 1;
+                if (prevIndex >= 0) {
+                    setCurrentStepIndex(prevIndex);
+                    setTimeLeft(steps[prevIndex].duration);
+                } else {
+                    // Restart current
+                    setTimeLeft(steps[0].duration);
+                }
+            };
+
+            const togglePlay = () => {
+                if (!isRunning) SoundEngine.init(); // Ensure context is running on user interaction
+                setIsRunning(!isRunning);
+            }
 
             const formatTime = (seconds) => {
                 const m = Math.floor(seconds / 60);
@@ -405,12 +523,25 @@
                         </div>
 
                         {!isFinished && (
-                            <div className="flex gap-6 mb-8">
-                                <button onClick={() => setIsRunning(!isRunning)} className="bg-white text-gray-800 w-16 h-16 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition">
-                                    {isRunning ? <Pause size={32} /> : <Play size={32} className="ml-1" />}
+                            <div className="flex gap-4 mb-8 items-center">
+                                {/* Previous */}
+                                <button onClick={handlePrev} className="bg-white/20 text-white w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/30 transition active:scale-95">
+                                    <SkipBack size={20} />
                                 </button>
-                                <button onClick={handleReset} className="bg-white/20 text-white w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/30 transition">
-                                    <RotateCcw size={28} />
+                                
+                                {/* Play/Pause */}
+                                <button onClick={togglePlay} className="bg-white text-gray-800 w-20 h-20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition">
+                                    {isRunning ? <Pause size={36} /> : <Play size={36} className="ml-1" />}
+                                </button>
+
+                                {/* Reset */}
+                                <button onClick={handleReset} className="bg-white/20 text-white w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/30 transition active:scale-95">
+                                    <RotateCcw size={20} />
+                                </button>
+
+                                {/* Next */}
+                                <button onClick={handleNext} className="bg-white/20 text-white w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/30 transition active:scale-95">
+                                    <SkipForward size={20} />
                                 </button>
                             </div>
                         )}
@@ -642,8 +773,8 @@
                                         >
                                              <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{libEx?.category || 'Ogólne'}</span>
                                              <div className="flex items-center gap-2">
-                                                 <span className={`text-xs ${canTimer ? 'text-blue-600 font-bold' : 'text-gray-600'}`}>{formatEx(ex)}</span>
-                                                 {canTimer && <Clock size={12} className="text-blue-500 animate-pulse" />}
+                                                 <span className={`text-xs text-gray-600 group-hover:underline`}>{formatEx(ex)}</span>
+                                                 {canTimer && <Clock size={12} className="text-gray-400 group-hover:text-red-500 transition" />}
                                              </div>
                                         </div>
                                     )}
@@ -721,158 +852,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            );
-        }
-
-        function AnalyticsView({ trainings, exerciseLibrary }) {
-            const [statExId, setStatExId] = useState(exerciseLibrary[0]?.id || '');
-            const stats = trainings.filter(t => t.exercises && t.exercises.some(e => e.exerciseId === statExId)).sort((a, b) => new Date(b.date) - new Date(a.date));
-            const selectedExInfo = exerciseLibrary.find(e => e.id === statExId);
-
-            return (
-                <div className="p-4 pt-6 pb-24 animate-fade-in max-w-md mx-auto">
-                    <Header title="Twój Postęp" icon={TrendingUp} />
-                    
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">Wybierz Ćwiczenie</label>
-                        <select value={statExId} onChange={(e) => setStatExId(e.target.value)} className="w-full p-2 bg-gray-50 rounded-lg border border-gray-200 outline-none text-sm text-gray-700">{exerciseLibrary.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}</select>
-                    </div>
-
-                    <div className="space-y-3">
-                    {stats.length === 0 ? <div className="text-center py-10 text-gray-300 text-sm">Brak danych dla tego ćwiczenia.</div> : stats.map(t => {
-                        const ex = t.exercises.find(e => e.exerciseId === statExId);
-                        return (
-                            <div key={t.id} className="bg-white pl-3 py-3 pr-3 rounded-lg shadow-sm border border-gray-100 flex flex-col justify-center">
-                                <div className="flex justify-between items-center w-full mb-1">
-                                    <div className="flex items-center gap-3">
-                                         <div title={t.isCompleted ? "Ukończony" : "Zaplanowany"} className="flex items-center">
-                                            {t.isCompleted ? <CheckCircle size={16} className="text-emerald-500"/> : <Calendar size={16} className="text-amber-500"/>}
-                                        </div>
-                                        <div className="text-sm text-gray-500">{formatDateShort(t.date)}</div>
-                                        <div className="flex items-center gap-2">
-                                            {getStatusIconLarge(ex.status)}
-                                        </div>
-                                    </div>
-                                    <span className="text-xs text-gray-600 font-mono text-right">{formatEx(ex)}</span>
-                                </div>
-                                {ex.actual && (
-                                    <div className="text-[10px] text-gray-500 italic border-t border-gray-50 pt-1 mt-1">
-                                        {ex.actual}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                    </div>
-                </div>
-            );
-        }
-
-        function ExercisesView({ library, onUpdate, onAdd, onDelete }) {
-            const [editingId, setEditingId] = useState(null);
-
-            return (
-                <div className="p-4 pt-6 pb-24 animate-fade-in max-w-md mx-auto">
-                    <Header 
-                        title="Baza Ćwiczeń" 
-                        icon={ClipboardList} 
-                        action={<button onClick={onAdd} className="bg-blue-600 text-white w-10 h-10 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition active:scale-95 flex items-center justify-center"><Plus size={24} /></button>}
-                    />
-                    
-                    <div className="space-y-3">
-                        {library.map((ex, idx) => {
-                            const isEditing = editingId === ex.id;
-                            
-                            // Adapter to reuse formatEx logic for Library defaults
-                            const displayEx = {
-                                reps: ex.defaultReps,
-                                timeRep: ex.defaultTimeRep,
-                                restRep: ex.defaultRestRep,
-                                series: ex.defaultSeries,
-                                restSet: ex.defaultRestSet,
-                                load: ex.defaultLoad
-                            };
-                            
-                            return (
-                                <Card key={ex.id} className="p-4 relative">
-                                    {/* Action Buttons */}
-                                    <div className="absolute top-3 right-3 flex gap-2 z-10">
-                                        {isEditing ? (
-                                            <button onClick={() => setEditingId(null)} className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-full shadow-md transition">
-                                                <Check size={16} />
-                                            </button>
-                                        ) : (
-                                            <>
-                                                <button onClick={() => setEditingId(ex.id)} className="p-1.5 text-gray-300 hover:text-blue-500 transition">
-                                                    <Pencil size={18} />
-                                                </button>
-                                                <button onClick={() => onDelete(ex.id)} className="p-1.5 text-gray-300 hover:text-red-500 transition">
-                                                    <Trash size={18} />
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-
-                                    <div className={isEditing ? 'pr-1 space-y-3' : 'space-y-1'}>
-                                        {isEditing ? (
-                                            <>
-                                                <div>
-                                                    <label className="text-[9px] uppercase font-bold text-gray-400">Nazwa</label>
-                                                    <input value={ex.name} onChange={(e) => onUpdate(ex.id, 'name', e.target.value)} className="clean-input w-full text-sm font-bold pb-1" />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[9px] uppercase font-bold text-gray-400">Kategoria</label>
-                                                    <input value={ex.category} onChange={(e) => onUpdate(ex.id, 'category', e.target.value)} className="clean-input w-full text-xs pb-1" />
-                                                </div>
-                                                <div>
-                                                    <label className="text-[9px] uppercase font-bold text-gray-400">Opis domyślny</label>
-                                                    <textarea value={ex.defaultDescription} onChange={(e) => onUpdate(ex.id, 'defaultDescription', e.target.value)} className="w-full text-xs border border-gray-200 rounded p-2 outline-none" rows="2" />
-                                                </div>
-                                                
-                                                {/* Single Line Parameter Edit */}
-                                                <div>
-                                                     <label className="text-[9px] uppercase font-bold text-gray-400 mb-1 block">Parametry Domyślne</label>
-                                                     <div className="flex flex-wrap items-center gap-1.5 p-2 bg-gray-50/50 rounded-lg border border-gray-100">
-                                                        <ParamInput label="Powtórzenia" width="w-8" value={ex.defaultReps} onChange={(e) => onUpdate(ex.id, 'defaultReps', e.target.value)} />
-                                                        
-                                                        <span className="text-gray-300 text-[10px]">(</span>
-                                                        <ParamInput label="Czas powtórzenia" width="w-8" value={ex.defaultTimeRep} onChange={(e) => onUpdate(ex.id, 'defaultTimeRep', e.target.value)} placeholder="t" />
-                                                        <span className="text-gray-300 text-[10px]">/</span>
-                                                        <ParamInput label="Przerwa między powt." width="w-8" value={ex.defaultRestRep} onChange={(e) => onUpdate(ex.id, 'defaultRestRep', e.target.value)} placeholder="p" />
-                                                        <span className="text-gray-300 text-[10px]">)</span>
-                                                        
-                                                        <span className="text-gray-400 text-xs font-bold">x</span>
-                                                        
-                                                        <ParamInput label="Ilość serii" width="w-8" value={ex.defaultSeries} onChange={(e) => onUpdate(ex.id, 'defaultSeries', e.target.value)} />
-                                                        
-                                                        <span className="text-gray-300 text-[10px]">(</span>
-                                                        <ParamInput label="Przerwa między seriami" width="w-10" value={ex.defaultRestSet} onChange={(e) => onUpdate(ex.id, 'defaultRestSet', e.target.value)} placeholder="czas" />
-                                                        <span className="text-gray-300 text-[10px]">)</span>
-                                                        
-                                                        <span className="text-gray-400 text-xs font-bold">:</span>
-                                                        
-                                                        <ParamInput label="Trudność (Load)" width="w-full" wrapperClass="flex-1 min-w-[80px]" value={ex.defaultLoad} onChange={(e) => onUpdate(ex.id, 'defaultLoad', e.target.value)} />
-                                                    </div>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div className="flex justify-between items-start pr-16">
-                                                    <h3 className="font-bold text-gray-800 text-sm">{ex.name}</h3>
-                                                </div>
-                                                <div className="flex justify-between items-baseline mb-2 mt-1">
-                                                    <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{ex.category}</span>
-                                                    <span className="text-xs text-gray-600">{formatEx(displayEx)}</span>
-                                                </div>
-                                                <p className="text-xs text-gray-500 leading-relaxed pr-8">{ex.defaultDescription || 'Brak opisu'}</p>
-                                            </>
-                                        )}
-                                    </div>
-                                </Card>
-                            );
-                        })}
                     </div>
                 </div>
             );
