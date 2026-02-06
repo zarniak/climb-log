@@ -122,6 +122,9 @@
         const AlertCircle = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></IconBase>;
         const X = (p) => <IconBase {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>;
         const Clock = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase>;
+        const Play = (p) => <IconBase {...p}><polygon points="5 3 19 12 5 21 5 3"/></IconBase>;
+        const Pause = (p) => <IconBase {...p}><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></IconBase>;
+        const RotateCcw = (p) => <IconBase {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/><path d="M3 3v9h9"/></IconBase>;
 
         // --- KOMPONENTY UI ---
         function Card({ children, className = "" }) {
@@ -177,7 +180,6 @@
 
         // --- HELPERY FORMATOWANIA ---
         const formatEx = (ex) => {
-            // Reps Part
             let repsPart = "";
             if (ex.reps) repsPart += ex.reps;
             
@@ -187,25 +189,21 @@
             else if (t) repsPart += ` (${t})`;
             else if (r) repsPart += ` (/${r})`;
             
-            // Series Part
             let seriesPart = "";
             if (ex.series) {
                 seriesPart += ex.series;
                 if (ex.restSet) seriesPart += ` (${ex.restSet})`;
             }
 
-            // Combine Reps and Series
             let mainPart = "";
             if (repsPart && seriesPart) {
                 mainPart = `${repsPart} x ${seriesPart}`;
             } else if (repsPart) {
                 mainPart = repsPart;
             } else if (seriesPart) {
-                // Should rarely happen based on structure, but handle it
                 mainPart = seriesPart; 
             }
 
-            // Load Part
             let result = mainPart;
             if (ex.load && ex.load !== '-') {
                 if (result) {
@@ -214,7 +212,6 @@
                     result = ex.load;
                 }
             }
-            
             return result;
         };
 
@@ -244,6 +241,78 @@
              return <div className="w-2.5 h-2.5 rounded-full bg-gray-200"></div>;
         };
 
+        const parseTime = (str) => {
+            if (!str) return 0;
+            str = str.toString().toLowerCase().trim();
+            if (str.includes(':')) {
+                const [min, sec] = str.split(':').map(Number);
+                return (min * 60) + (sec || 0);
+            }
+            if (str.includes('m')) return parseFloat(str) * 60;
+            return parseFloat(str) || 0;
+        };
+
+        // --- TIMER GENERATOR ---
+        const generateTimerSteps = (ex) => {
+            const steps = [];
+            const reps = parseInt(ex.reps) || 1;
+            const series = parseInt(ex.series) || 1;
+            const timeRep = parseTime(ex.timeRep);
+            const restRep = parseTime(ex.restRep);
+            const restSet = parseTime(ex.restSet);
+
+            // 1. Preparation (Always 10s)
+            steps.push({ type: 'prep', duration: 10, label: 'Przygotuj się!', color: 'bg-emerald-500', text: 'text-emerald-100', ring: 'ring-emerald-300' });
+
+            for (let s = 1; s <= series; s++) {
+                for (let r = 1; r <= reps; r++) {
+                    // 2. Work (Only if timeRep > 0, default to 0 if not set but logical flow requires it)
+                    if (timeRep > 0) {
+                        steps.push({ 
+                            type: 'work', 
+                            duration: timeRep, 
+                            label: `Praca (S:${s}/${series} P:${r}/${reps})`, 
+                            color: 'bg-red-600', 
+                            text: 'text-red-100',
+                            ring: 'ring-red-400',
+                            seriesIdx: s, 
+                            repsIdx: r 
+                        });
+                    }
+
+                    // 3. Rest Rep (if not last rep OR if last rep but no rest set and time > 0)
+                    if (r < reps && restRep > 0) {
+                        steps.push({ 
+                            type: 'rest_rep', 
+                            duration: restRep, 
+                            label: `Przerwa (S:${s}/${series})`, 
+                            color: 'bg-blue-500', 
+                            text: 'text-blue-100',
+                            ring: 'ring-blue-300',
+                            seriesIdx: s, 
+                            repsIdx: r 
+                        });
+                    }
+                }
+
+                // 4. Rest Set (if not last set)
+                if (s < series && restSet > 0) {
+                    steps.push({ 
+                        type: 'rest_set', 
+                        duration: restSet, 
+                        label: 'Przerwa między seriami', 
+                        color: 'bg-amber-500', 
+                        text: 'text-amber-100',
+                        ring: 'ring-amber-300',
+                        seriesIdx: s 
+                    });
+                }
+            }
+
+            steps.push({ type: 'done', duration: 0, label: 'Koniec!', color: 'bg-slate-800', text: 'text-gray-300', ring: 'ring-gray-600' });
+            return steps;
+        };
+
         // --- DANE DOMYŚLNE ---
         const INITIAL_EXERCISE_LIBRARY = [
             { id: 'ex_pull_australian', name: 'Podciąganie Australijskie', category: 'Siła', defaultSeries: 3, defaultReps: '5', defaultLoad: 'masy ciała', defaultTimeRep: '', defaultRestRep: '', defaultRestSet: '2m', defaultDescription: 'Dynamiczny ruch w górę, powolne opuszczanie.' },
@@ -260,6 +329,120 @@
         };
 
         // --- WIDOKI ---
+
+        function TimerView({ timerData, onBack }) {
+            const [steps, setSteps] = useState([]);
+            const [currentStepIndex, setCurrentStepIndex] = useState(0);
+            const [timeLeft, setTimeLeft] = useState(0);
+            const [isRunning, setIsRunning] = useState(false);
+            const [hasStarted, setHasStarted] = useState(false);
+            const audioRef = useRef(null);
+
+            useEffect(() => {
+                if (timerData) {
+                    const generatedSteps = generateTimerSteps(timerData);
+                    setSteps(generatedSteps);
+                    if (generatedSteps.length > 0) {
+                        setTimeLeft(generatedSteps[0].duration);
+                        setIsRunning(true); // Auto-start
+                        setHasStarted(true);
+                    }
+                }
+            }, [timerData]);
+
+            useEffect(() => {
+                let interval = null;
+                if (isRunning && currentStepIndex < steps.length) {
+                    interval = setInterval(() => {
+                        setTimeLeft((prev) => {
+                            if (prev <= 1) {
+                                // Next Step
+                                const nextIndex = currentStepIndex + 1;
+                                if (nextIndex < steps.length) {
+                                    setCurrentStepIndex(nextIndex);
+                                    return steps[nextIndex].duration;
+                                } else {
+                                    setIsRunning(false);
+                                    return 0;
+                                }
+                            }
+                            return prev - 1;
+                        });
+                    }, 1000);
+                }
+                return () => clearInterval(interval);
+            }, [isRunning, currentStepIndex, steps]);
+
+            const currentStep = steps[currentStepIndex] || { color: 'bg-gray-800', label: 'Ładowanie...', duration: 0, text: 'text-white' };
+            const isFinished = currentStep.type === 'done';
+
+            const handleReset = () => {
+                setIsRunning(false);
+                setCurrentStepIndex(0);
+                if (steps.length > 0) setTimeLeft(steps[0].duration);
+            };
+
+            const formatTime = (seconds) => {
+                const m = Math.floor(seconds / 60);
+                const s = seconds % 60;
+                return `${m > 0 ? m + ':' : ''}${s < 10 && m > 0 ? '0' : ''}${s}`;
+            };
+
+            return (
+                <div className={`min-h-screen transition-colors duration-500 flex flex-col ${currentStep.color}`}>
+                     <div className="absolute top-4 left-4 z-10">
+                        <button onClick={onBack} className="bg-white/20 hover:bg-white/30 text-white rounded-full p-2 backdrop-blur-sm transition">
+                            <ChevronRight className="rotate-180" size={24} />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                        <h2 className={`text-2xl font-bold uppercase tracking-widest mb-2 opacity-80 ${currentStep.text}`}>{timerData?.name || 'Timer'}</h2>
+                        <div className={`text-xl font-medium mb-8 opacity-90 ${currentStep.text}`}>{currentStep.label}</div>
+                        
+                        <div className="text-[120px] font-black text-white leading-none tabular-nums tracking-tighter drop-shadow-lg mb-8">
+                            {isFinished ? <Check size={100}/> : formatTime(timeLeft)}
+                        </div>
+
+                        {!isFinished && (
+                            <div className="flex gap-6 mb-8">
+                                <button onClick={() => setIsRunning(!isRunning)} className="bg-white text-gray-800 w-16 h-16 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition">
+                                    {isRunning ? <Pause size={32} /> : <Play size={32} className="ml-1" />}
+                                </button>
+                                <button onClick={handleReset} className="bg-white/20 text-white w-16 h-16 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/30 transition">
+                                    <RotateCcw size={28} />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Upcoming Steps List - "Jak na zdjęciu" (Scrolling list of segments) */}
+                    <div className="bg-white/95 backdrop-blur-md rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] h-1/3 overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                            <span className="text-xs font-bold uppercase text-gray-400 tracking-wider">Plan treningu</span>
+                            <span className="text-xs font-mono text-gray-500">{steps.length - 1 - currentStepIndex} kroków do końca</span>
+                        </div>
+                        <div className="overflow-y-auto p-2 space-y-2 flex-1 no-scrollbar">
+                            {steps.map((step, idx) => {
+                                if (idx < currentStepIndex) return null; // Hide passed steps
+                                const isCurrent = idx === currentStepIndex;
+                                return (
+                                    <div key={idx} className={`flex items-center p-3 rounded-xl transition-all ${isCurrent ? `bg-gray-100 border-l-4 ${currentStep.color.replace('bg-', 'border-')} shadow-sm` : 'opacity-50 grayscale'}`}>
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white mr-3 shrink-0 ${step.color}`}>
+                                            {step.duration}s
+                                        </div>
+                                        <div className="text-left">
+                                            <div className="text-sm font-bold text-gray-800">{step.label}</div>
+                                            {step.type !== 'done' && <div className="text-[10px] text-gray-500 uppercase">{step.type === 'prep' ? 'Start' : step.type === 'work' ? 'Ćwiczenie' : 'Odpoczynek'}</div>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
         function TrainingListView({ trainings, onSelect, onAdd, exerciseLibrary }) {
             const [viewMode, setViewMode] = useState('planned');
@@ -324,7 +507,7 @@
             );
         }
 
-        function TrainingDetailView({ training, onClose, onUpdateTraining, onUpdateExercise, onAddExercise, onDeleteExercise, onDeleteTraining, exerciseLibrary }) {
+        function TrainingDetailView({ training, onClose, onUpdateTraining, onUpdateExercise, onAddExercise, onDeleteExercise, onDeleteTraining, exerciseLibrary, onStartTimer }) {
             const [isHeaderEditing, setIsHeaderEditing] = useState(false);
             const [editingExIndex, setEditingExIndex] = useState(null);
 
@@ -419,6 +602,9 @@
                                     onUpdateExercise(training.id, idx, 'status', next);
                                 };
 
+                                // Check if timer is available for this exercise
+                                const canTimer = !isEditingThis && (parseTime(ex.timeRep) > 0 || parseTime(ex.restRep) > 0 || parseTime(ex.restSet) > 0);
+
                                 return (
                                 <div key={idx} className="bg-white border border-gray-100 rounded-xl p-4 relative shadow-sm hover:border-blue-200 transition">
                                     {/* Indivudal Exercise Actions */}
@@ -450,9 +636,15 @@
                                     </div>
 
                                     {!isEditingThis && (
-                                        <div className="flex justify-between items-baseline mb-3">
+                                        <div 
+                                            className={`flex justify-between items-baseline mb-3 ${canTimer ? 'cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 transition group' : ''}`}
+                                            onClick={() => canTimer && onStartTimer({ ...ex, name: libEx?.name || 'Trening' })}
+                                        >
                                              <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{libEx?.category || 'Ogólne'}</span>
-                                             <span className="text-xs text-gray-600">{formatEx(ex)}</span>
+                                             <div className="flex items-center gap-2">
+                                                 <span className={`text-xs ${canTimer ? 'text-blue-600 font-bold' : 'text-gray-600'}`}>{formatEx(ex)}</span>
+                                                 {canTimer && <Clock size={12} className="text-blue-500 animate-pulse" />}
+                                             </div>
                                         </div>
                                     )}
 
@@ -695,6 +887,7 @@
             const [selectedId, setSelectedId] = useState(null);
             const [user, setUser] = useState(null);
             const [isOnline, setIsOnline] = useState(false);
+            const [timerData, setTimerData] = useState(null);
             const saveTimeout = useRef(null);
 
             // --- FIREBASE SYNC ---
@@ -924,6 +1117,11 @@
                 saveLibraryToDb(newLib);
             };
 
+            const handleStartTimer = (ex) => {
+                setTimerData(ex);
+                setActiveTab('timer');
+            };
+
             const selected = trainings.find(t => t.id === selectedId);
 
             return (
@@ -931,13 +1129,16 @@
                     {/* Status Bar (Thin Line) */}
                     <div className={`fixed top-0 left-0 w-full h-1 z-[100] transition-colors duration-500 ${isOnline ? 'bg-emerald-400' : 'bg-red-400'}`}></div>
 
-                    {selected ? (
+                    {activeTab === 'timer' ? (
+                        <TimerView timerData={timerData} onBack={() => setActiveTab('trainings')} />
+                    ) : selected ? (
                         <TrainingDetailView 
                             training={selected} 
                             onClose={() => { setSelectedId(null); }}
                             onUpdateTraining={handleUpdateT} onUpdateExercise={handleUpdateE}
                             onAddExercise={handleAddE} onDeleteExercise={handleDeleteE} onDeleteTraining={handleDeleteT}
                             exerciseLibrary={exerciseLibrary}
+                            onStartTimer={handleStartTimer}
                         />
                     ) : activeTab === 'trainings' ? (
                         <TrainingListView trainings={trainings} onSelect={(id) => { setSelectedId(id); }} onAdd={handleAddT} exerciseLibrary={exerciseLibrary} />
@@ -952,7 +1153,7 @@
                         />
                     )}
                     
-                    {!selected && (
+                    {!selected && activeTab !== 'timer' && (
                         <div className="fixed bottom-0 max-w-md w-full bg-white/95 backdrop-blur-md border-t border-gray-100 flex justify-around py-3 z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.02)]">
                             <button onClick={() => setActiveTab('trainings')} className={`flex flex-col items-center p-2 rounded-xl w-24 transition ${activeTab === 'trainings' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}><Calendar size={20} className="mb-1" /><span className="text-[9px] font-bold uppercase tracking-wider">Rozpiska</span></button>
                             <button onClick={() => setActiveTab('analytics')} className={`flex flex-col items-center p-2 rounded-xl w-24 transition ${activeTab === 'analytics' ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}><TrendingUp size={20} className="mb-1" /><span className="text-[9px] font-bold uppercase tracking-wider">Postęp</span></button>
