@@ -175,7 +175,7 @@
                         onFocus={() => setIsFocused(true)}
                         onBlur={() => setIsFocused(false)}
                         placeholder={placeholder}
-                        className={`${width} h-7 text-center bg-gray-50 border border-gray-200 rounded text-xs text-gray-700 outline-none focus:border-blue-400 focus:bg-white transition-colors placeholder-gray-300`}
+                        className={`${width} h-7 text-center bg-white border border-gray-200 rounded text-xs text-gray-700 outline-none focus:border-blue-400 focus:bg-white transition-colors placeholder-gray-300`}
                     />
                 </div>
             );
@@ -806,27 +806,26 @@
                                         <div className="bg-gray-50/50 rounded-lg border border-gray-100 p-2 mb-3">
                                             {/* Row 1: Metrics */}
                                             <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                                                <ParamInput label="Powtórzenia" width="w-8" value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} />
-                                                <span className="text-gray-300 text-[10px]">(</span>
-                                                <ParamInput label="Czas" width="w-8" value={ex.timeRep} onChange={(e) => onUpdateExercise(training.id, idx, 'timeRep', e.target.value)} placeholder="t" />
-                                                <span className="text-gray-300 text-[10px]">/</span>
-                                                <ParamInput label="Przerwa" width="w-8" value={ex.restRep} onChange={(e) => onUpdateExercise(training.id, idx, 'restRep', e.target.value)} placeholder="p" />
-                                                <span className="text-gray-300 text-[10px]">)</span>
-                                                <span className="text-gray-400 text-xs font-bold">x</span>
-                                                <ParamInput label="Serie" width="w-8" value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} />
-                                                <span className="text-gray-300 text-[10px]">(</span>
-                                                <ParamInput label="Przerwa serii" width="w-10" value={ex.restSet} onChange={(e) => onUpdateExercise(training.id, idx, 'restSet', e.target.value)} placeholder="czas" />
-                                                <span className="text-gray-300 text-[10px]">)</span>
+                                                <ParamInput label="Powtórzenia" width="w-14" value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} />
+                                                <span className="text-gray-500 font-bold text-sm">(</span>
+                                                <ParamInput label="Czas" width="w-14" value={ex.timeRep} onChange={(e) => onUpdateExercise(training.id, idx, 'timeRep', e.target.value)} placeholder="t" />
+                                                <span className="text-gray-500 font-bold text-sm">/</span>
+                                                <ParamInput label="Przerwa" width="w-14" value={ex.restRep} onChange={(e) => onUpdateExercise(training.id, idx, 'restRep', e.target.value)} placeholder="p" />
+                                                <span className="text-gray-500 font-bold text-sm">)</span>
+                                                <span className="text-gray-600 font-bold text-sm mx-1">x</span>
+                                                <ParamInput label="Serie" width="w-14" value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} />
+                                                <span className="text-gray-500 font-bold text-sm">(</span>
+                                                <ParamInput label="Przerwa serii" width="w-20" value={ex.restSet} onChange={(e) => onUpdateExercise(training.id, idx, 'restSet', e.target.value)} placeholder="czas" />
+                                                <span className="text-gray-500 font-bold text-sm">)</span>
                                             </div>
                                             
                                             {/* Row 2: Load - Full Width explicitly */}
-                                            <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
-                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider whitespace-nowrap">Obciążenie:</span>
+                                            <div className="pt-1 border-t border-gray-100">
                                                 <input 
                                                     value={ex.load || ''} 
                                                     onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)}
-                                                    className="flex-1 bg-white border border-gray-200 rounded h-7 px-2 text-xs font-bold text-gray-700 outline-none focus:border-blue-400 transition"
-                                                    placeholder="np. masy ciała, +5kg"
+                                                    className="w-full bg-white border border-gray-200 rounded h-8 px-2 text-xs text-gray-700 outline-none focus:border-blue-400 transition"
+                                                    placeholder="Obciążenie / Trudność (np. masy ciała, +5kg)"
                                                 />
                                             </div>
                                         </div>
