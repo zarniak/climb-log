@@ -1137,13 +1137,13 @@
                                  newEx[idx] = {
                                      ...newEx[idx],
                                      exerciseId: value,
-                                     description: libEx.defaultDescription,
-                                     series: libEx.defaultSeries,
-                                     reps: libEx.defaultReps,
-                                     load: libEx.defaultLoad,
-                                     timeRep: libEx.defaultTimeRep,
-                                     restRep: libEx.defaultRestRep,
-                                     restSet: libEx.defaultRestSet
+                                     description: libEx.defaultDescription || '',
+                                     series: libEx.defaultSeries || 3,
+                                     reps: libEx.defaultReps || '',
+                                     load: libEx.defaultLoad || '-',
+                                     timeRep: libEx.defaultTimeRep || '',
+                                     restRep: libEx.defaultRestRep || '',
+                                     restSet: libEx.defaultRestSet || ''
                                  };
                              }
                         } else {
