@@ -282,7 +282,6 @@
                 this.playTone(800, 'sine', 0.1, 0.1);
             },
             playWhistle: function() {
-                // Symulacja gwizdka (Work start)
                 if (!this.ctx) this.init();
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
@@ -298,13 +297,11 @@
                 osc.stop(this.ctx.currentTime + 0.3);
             },
             playGong: function(deep = false) {
-                // Gong (Rest start)
                 const freq = deep ? 220 : 440;
                 const dur = deep ? 1.5 : 0.8;
                 this.playTone(freq, 'sine', dur, 0.15);
             },
             playFanfare: function() {
-                // Victory!
                 const now = this.ctx.currentTime;
                 const notes = [523.25, 659.25, 783.99, 1046.50]; // C E G C
                 notes.forEach((freq, i) => {
@@ -332,51 +329,19 @@
             const restRep = parseTime(ex.restRep);
             const restSet = parseTime(ex.restSet);
 
-            // 1. Preparation (Always 10s)
             steps.push({ type: 'prep', duration: 10, label: 'Przygotuj się!', color: 'bg-emerald-500', text: 'text-emerald-100', ring: 'ring-emerald-300' });
 
             for (let s = 1; s <= series; s++) {
                 for (let r = 1; r <= reps; r++) {
-                    // 2. Work (Only if timeRep > 0, default to 0 if not set but logical flow requires it)
                     if (timeRep > 0) {
-                        steps.push({ 
-                            type: 'work', 
-                            duration: timeRep, 
-                            label: `Praca (S:${s}/${series} P:${r}/${reps})`, 
-                            color: 'bg-red-600', 
-                            text: 'text-red-100',
-                            ring: 'ring-red-400',
-                            seriesIdx: s, 
-                            repsIdx: r 
-                        });
+                        steps.push({ type: 'work', duration: timeRep, label: `Praca (S:${s}/${series} P:${r}/${reps})`, color: 'bg-red-600', text: 'text-red-100', ring: 'ring-red-400', seriesIdx: s, repsIdx: r });
                     }
-
-                    // 3. Rest Rep (if not last rep OR if last rep but no rest set and time > 0)
                     if (r < reps && restRep > 0) {
-                        steps.push({ 
-                            type: 'rest_rep', 
-                            duration: restRep, 
-                            label: `Przerwa (S:${s}/${series})`, 
-                            color: 'bg-blue-500', 
-                            text: 'text-blue-100',
-                            ring: 'ring-blue-300',
-                            seriesIdx: s, 
-                            repsIdx: r 
-                        });
+                        steps.push({ type: 'rest_rep', duration: restRep, label: `Przerwa (S:${s}/${series})`, color: 'bg-blue-500', text: 'text-blue-100', ring: 'ring-blue-300', seriesIdx: s, repsIdx: r });
                     }
                 }
-
-                // 4. Rest Set (if not last set)
                 if (s < series && restSet > 0) {
-                    steps.push({ 
-                        type: 'rest_set', 
-                        duration: restSet, 
-                        label: 'Przerwa między seriami', 
-                        color: 'bg-amber-500', 
-                        text: 'text-amber-100',
-                        ring: 'ring-amber-300',
-                        seriesIdx: s 
-                    });
+                    steps.push({ type: 'rest_set', duration: restSet, label: 'Przerwa między seriami', color: 'bg-amber-500', text: 'text-amber-100', ring: 'ring-amber-300', seriesIdx: s });
                 }
             }
 
@@ -407,7 +372,6 @@
             const [timeLeft, setTimeLeft] = useState(0);
             const [isRunning, setIsRunning] = useState(false);
             
-            // Effect to initialize steps
             useEffect(() => {
                 if (timerData) {
                     const generatedSteps = generateTimerSteps(timerData);
@@ -415,12 +379,11 @@
                     if (generatedSteps.length > 0) {
                         setTimeLeft(generatedSteps[0].duration);
                         setIsRunning(true);
-                        SoundEngine.init(); // Pre-init audio context on load
+                        SoundEngine.init();
                     }
                 }
             }, [timerData]);
 
-            // Effect to handle sounds on step change or tick
             const playStepSound = (type) => {
                 if(type === 'work') SoundEngine.playWhistle();
                 else if(type === 'rest_rep') SoundEngine.playGong(false);
@@ -431,17 +394,12 @@
             useEffect(() => {
                 let interval = null;
                 if (isRunning && currentStepIndex < steps.length) {
-                    // First enter step sound? Handled by transition logic mostly.
-                    
                     interval = setInterval(() => {
                         setTimeLeft((prev) => {
-                            // Ticking sound for last 3 seconds (3, 2, 1)
                             if (prev <= 4 && prev > 1) {
                                 SoundEngine.playTick();
                             }
-
                             if (prev <= 1) {
-                                // Next Step Logic
                                 const nextIndex = currentStepIndex + 1;
                                 if (nextIndex < steps.length) {
                                     setCurrentStepIndex(nextIndex);
@@ -449,7 +407,6 @@
                                     playStepSound(nextStep.type);
                                     return nextStep.duration;
                                 } else {
-                                    // Finished
                                     playStepSound('done');
                                     setIsRunning(false);
                                     return 0;
@@ -477,7 +434,6 @@
                     setCurrentStepIndex(nextIndex);
                     setTimeLeft(steps[nextIndex].duration);
                 } else {
-                    // Go to done
                      setCurrentStepIndex(steps.length - 1);
                      setTimeLeft(0);
                      setIsRunning(false);
@@ -490,13 +446,12 @@
                     setCurrentStepIndex(prevIndex);
                     setTimeLeft(steps[prevIndex].duration);
                 } else {
-                    // Restart current
                     setTimeLeft(steps[0].duration);
                 }
             };
 
             const togglePlay = () => {
-                if (!isRunning) SoundEngine.init(); // Ensure context is running on user interaction
+                if (!isRunning) SoundEngine.init();
                 setIsRunning(!isRunning);
             }
 
@@ -524,22 +479,15 @@
 
                         {!isFinished && (
                             <div className="flex gap-4 mb-8 items-center">
-                                {/* Previous */}
                                 <button onClick={handlePrev} className="bg-white/20 text-white w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/30 transition active:scale-95">
                                     <SkipBack size={20} />
                                 </button>
-                                
-                                {/* Play/Pause */}
                                 <button onClick={togglePlay} className="bg-white text-gray-800 w-20 h-20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition">
                                     {isRunning ? <Pause size={36} /> : <Play size={36} className="ml-1" />}
                                 </button>
-
-                                {/* Reset */}
                                 <button onClick={handleReset} className="bg-white/20 text-white w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/30 transition active:scale-95">
                                     <RotateCcw size={20} />
                                 </button>
-
-                                {/* Next */}
                                 <button onClick={handleNext} className="bg-white/20 text-white w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/30 transition active:scale-95">
                                     <SkipForward size={20} />
                                 </button>
@@ -547,7 +495,6 @@
                         )}
                     </div>
 
-                    {/* Upcoming Steps List - "Jak na zdjęciu" (Scrolling list of segments) */}
                     <div className="bg-white/95 backdrop-blur-md rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] h-1/3 overflow-hidden flex flex-col">
                         <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white">
                             <span className="text-xs font-bold uppercase text-gray-400 tracking-wider">Plan treningu</span>
@@ -555,7 +502,7 @@
                         </div>
                         <div className="overflow-y-auto p-2 space-y-2 flex-1 no-scrollbar">
                             {steps.map((step, idx) => {
-                                if (idx < currentStepIndex) return null; // Hide passed steps
+                                if (idx < currentStepIndex) return null;
                                 const isCurrent = idx === currentStepIndex;
                                 return (
                                     <div key={idx} className={`flex items-center p-3 rounded-xl transition-all ${isCurrent ? `bg-gray-100 border-l-4 ${currentStep.color.replace('bg-', 'border-')} shadow-sm` : 'opacity-50 grayscale'}`}>
@@ -634,225 +581,6 @@
                             </Card>
                         ))
                     )}
-                </div>
-            );
-        }
-
-        function TrainingDetailView({ training, onClose, onUpdateTraining, onUpdateExercise, onAddExercise, onDeleteExercise, onDeleteTraining, exerciseLibrary, onStartTimer }) {
-            const [isHeaderEditing, setIsHeaderEditing] = useState(false);
-            const [editingExIndex, setEditingExIndex] = useState(null);
-
-            if (!training) return null;
-            const isCompleted = !!training.isCompleted;
-
-            return (
-                <div className="pb-24 animate-fade-in bg-white min-h-screen">
-                    {/* Header: Controls */}
-                    <div className="sticky top-0 bg-white/95 backdrop-blur-sm z-10 border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-                        <button onClick={onClose} className="text-gray-400 hover:text-gray-800 flex items-center text-sm font-medium transition"><ChevronRight className="rotate-180 mr-1" size={18} /> Wróć</button>
-                        <div className="flex items-center gap-3">
-                             <button onClick={() => onDeleteTraining(training.id)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition"><Trash size={18} /></button>
-                             
-                            <button onClick={() => setIsHeaderEditing(!isHeaderEditing)} className={`w-8 h-8 flex items-center justify-center rounded-full transition ${isHeaderEditing ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-blue-600 hover:bg-blue-50'}`}>
-                                {isHeaderEditing ? <Check size={18} /> : <Pencil size={18} />}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="p-4 space-y-4 max-w-md mx-auto">
-                        {/* Date & Location */}
-                        <div>
-                             <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                    {isHeaderEditing ? (
-                                        <input type="date" value={training.date} onChange={(e) => onUpdateTraining(training.id, 'date', e.target.value)} className="text-2xl font-bold text-gray-900 bg-transparent border-b border-gray-200 w-full outline-none" />
-                                    ) : (
-                                        <h1 className="text-2xl font-bold text-gray-900">{formatDatePretty(training.date)}</h1>
-                                    )}
-                                </div>
-                                {!isHeaderEditing && (
-                                    <a href={generateCalendarLink(training)} target="_blank" className="p-2 text-gray-400 hover:text-gray-600 transition">
-                                        <CalendarPlus size={24} />
-                                    </a>
-                                )}
-                            </div>
-                            
-                            <div className="flex items-center mt-2 text-gray-500 text-sm">
-                                <MapPin size={14} className="mr-1.5 text-blue-500" />
-                                {isHeaderEditing ? (
-                                    <input value={training.location} onChange={(e) => onUpdateTraining(training.id, 'location', e.target.value)} className="clean-input w-full text-sm" placeholder="Gdzie się wspinasz?" />
-                                ) : (
-                                    training.location ? (
-                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(training.location)}`} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-600">
-                                            {training.location}
-                                        </a>
-                                    ) : (
-                                        <span>Dodaj lokalizację</span>
-                                    )
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Status Switcher */}
-                        <button
-                            onClick={() => onUpdateTraining(training.id, 'isCompleted', !isCompleted)}
-                            className={`w-full py-2 rounded-xl font-bold uppercase tracking-wide flex items-center justify-center transition border ${
-                                isCompleted 
-                                ? 'bg-green-50 text-green-700 border-green-100 hover:bg-green-100' 
-                                : 'bg-amber-50 text-amber-700 border-amber-100 hover:bg-amber-100'
-                            }`}
-                        >
-                            {isCompleted ? <><CheckCircle size={16} className="mr-2"/> Ukończony</> : <><Calendar size={16} className="mr-2"/> Zaplanowany</>}
-                        </button>
-
-                        {/* Coach Notes - Always Editable */}
-                        <div className="bg-yellow-50/50 border border-yellow-100 rounded-xl p-3">
-                            <div className="flex items-start gap-2">
-                                <MessageSquare size={16} className="text-yellow-600 mt-0.5 shrink-0" />
-                                <div className="w-full">
-                                    <span className="text-[10px] font-bold text-yellow-600 uppercase mb-1 block">Notatka Trenera</span>
-                                    <textarea 
-                                        value={training.coachNotes} 
-                                        onChange={(e) => onUpdateTraining(training.id, 'coachNotes', e.target.value)} 
-                                        className="w-full bg-yellow-100/30 border border-yellow-200/50 rounded p-2 text-xs outline-none focus:bg-white focus:border-yellow-400 transition" 
-                                        rows="2" 
-                                        placeholder="Wpisz cele / uwagi..." 
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Exercises List */}
-                        <div className="space-y-4 pt-2">
-                            {training.exercises && training.exercises.map((ex, idx) => {
-                                const libEx = exerciseLibrary.find(l => l.id === ex.exerciseId);
-                                const isEditingThis = editingExIndex === idx;
-
-                                const toggleStatus = (newStatus) => {
-                                    const next = ex.status === newStatus ? null : newStatus;
-                                    onUpdateExercise(training.id, idx, 'status', next);
-                                };
-
-                                // Check if timer is available for this exercise
-                                const canTimer = !isEditingThis && (parseTime(ex.timeRep) > 0 || parseTime(ex.restRep) > 0 || parseTime(ex.restSet) > 0);
-
-                                return (
-                                <div key={idx} className="bg-white border border-gray-100 rounded-xl p-4 relative shadow-sm hover:border-blue-200 transition">
-                                    {/* Indivudal Exercise Actions */}
-                                    <div className="absolute top-3 right-3 flex gap-2 z-10">
-                                        {isEditingThis ? (
-                                             <button onClick={() => setEditingExIndex(null)} className="w-6 h-6 flex items-center justify-center bg-blue-600 text-white rounded shadow-sm hover:bg-blue-700 transition">
-                                                <Check size={12} />
-                                             </button>
-                                        ) : (
-                                            <>
-                                                <button onClick={() => setEditingExIndex(idx)} className="p-1 text-gray-300 hover:text-blue-500 transition">
-                                                    <Pencil size={14} />
-                                                </button>
-                                                <button onClick={() => onDeleteExercise(training.id, idx)} className="p-1 text-gray-300 hover:text-red-500 transition">
-                                                    <Trash size={14} />
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                    
-                                    <div className={isEditingThis ? 'pr-20 mb-3' : 'pr-16 mb-1'}>
-                                        {isEditingThis ? (
-                                            <select value={ex.exerciseId} onChange={(e) => onUpdateExercise(training.id, idx, 'exerciseId', e.target.value)} className="w-full text-sm font-bold text-gray-800 bg-transparent border-b border-gray-200 outline-none pb-1">
-                                                {exerciseLibrary.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                                            </select>
-                                        ) : (
-                                            <h4 className="text-sm font-bold text-gray-800">{libEx?.name || 'Ćwiczenie'}</h4>
-                                        )}
-                                    </div>
-
-                                    {!isEditingThis && (
-                                        <div 
-                                            className={`flex justify-between items-baseline mb-3 ${canTimer ? 'cursor-pointer hover:bg-gray-50 rounded px-1 -mx-1 transition group' : ''}`}
-                                            onClick={() => canTimer && onStartTimer({ ...ex, name: libEx?.name || 'Trening' })}
-                                        >
-                                             <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{libEx?.category || 'Ogólne'}</span>
-                                             <div className="flex items-center gap-2">
-                                                 <span className={`text-xs text-gray-600 group-hover:underline`}>{formatEx(ex)}</span>
-                                                 {canTimer && <Clock size={12} className="text-gray-400 group-hover:text-red-500 transition" />}
-                                             </div>
-                                        </div>
-                                    )}
-
-                                    {/* Parameters Edit Row (Single Line) */}
-                                    {isEditingThis && (
-                                        <div className="flex flex-wrap items-center gap-1.5 mb-3 p-2 bg-gray-50/50 rounded-lg border border-gray-100">
-                                            <ParamInput label="Powtórzenia" width="w-8" value={ex.reps} onChange={(e) => onUpdateExercise(training.id, idx, 'reps', e.target.value)} />
-                                            
-                                            <span className="text-gray-300 text-[10px]">(</span>
-                                            <ParamInput label="Czas powtórzenia" width="w-8" value={ex.timeRep} onChange={(e) => onUpdateExercise(training.id, idx, 'timeRep', e.target.value)} placeholder="t" />
-                                            <span className="text-gray-300 text-[10px]">/</span>
-                                            <ParamInput label="Przerwa między powt." width="w-8" value={ex.restRep} onChange={(e) => onUpdateExercise(training.id, idx, 'restRep', e.target.value)} placeholder="p" />
-                                            <span className="text-gray-300 text-[10px]">)</span>
-                                            
-                                            <span className="text-gray-400 text-xs font-bold">x</span>
-                                            
-                                            <ParamInput label="Ilość serii" width="w-8" value={ex.series} onChange={(e) => onUpdateExercise(training.id, idx, 'series', e.target.value)} />
-                                            
-                                            <span className="text-gray-300 text-[10px]">(</span>
-                                            <ParamInput label="Przerwa między seriami" width="w-10" value={ex.restSet} onChange={(e) => onUpdateExercise(training.id, idx, 'restSet', e.target.value)} placeholder="czas" />
-                                            <span className="text-gray-300 text-[10px]">)</span>
-                                            
-                                            <span className="text-gray-400 text-xs font-bold">:</span>
-                                            
-                                            <ParamInput label="Trudność (Load)" width="w-full" wrapperClass="flex-1 min-w-[80px]" value={ex.load} onChange={(e) => onUpdateExercise(training.id, idx, 'load', e.target.value)} />
-                                        </div>
-                                    )}
-
-                                    <div className="mb-3">
-                                         {isEditingThis ? <textarea value={ex.description} onChange={(e) => onUpdateExercise(training.id, idx, 'description', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded p-1.5 text-xs outline-none" rows="3" placeholder="Opis..." /> : <p className="text-xs text-gray-500 leading-relaxed">{ex.description}</p>}
-                                    </div>
-                                    
-                                    {/* STATUS BUTTONS ROW */}
-                                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-50">
-                                        <div className="flex flex-col gap-1 shrink-0">
-                                            <button onClick={() => toggleStatus('done')} className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${ex.status === 'done' ? 'bg-emerald-500 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-emerald-50 hover:text-emerald-400'}`}>
-                                                <Check size={16} />
-                                            </button>
-                                            <button onClick={() => toggleStatus('attention')} className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${ex.status === 'attention' ? 'bg-amber-400 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-amber-50 hover:text-amber-400'}`}>
-                                                <AlertCircle size={16} />
-                                            </button>
-                                            <button onClick={() => toggleStatus('skipped')} className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${ex.status === 'skipped' ? 'bg-red-500 text-white shadow-md' : 'bg-gray-50 text-gray-300 hover:bg-red-50 hover:text-red-400'}`}>
-                                                <X size={16} />
-                                            </button>
-                                        </div>
-                                        <div className="flex-1">
-                                             <textarea 
-                                                value={ex.actual || ''} 
-                                                onChange={(e) => onUpdateExercise(training.id, idx, 'actual', e.target.value)} 
-                                                className="w-full h-[104px] px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-xs outline-none focus:border-blue-400 focus:bg-white transition resize-none" 
-                                                placeholder="Wynik / Feedback..." 
-                                             />
-                                        </div>
-                                    </div>
-                                </div>
-                                )})}
-                            
-                            <button onClick={() => onAddExercise(training.id)} className="w-full py-3 border border-dashed border-blue-200 rounded-xl text-blue-500 text-sm font-semibold flex items-center justify-center hover:bg-blue-50 transition"><Plus size={18} className="mr-2" /> Dodaj ćwiczenie</button>
-                        </div>
-
-                        {/* General Feedback / Summary - Always Editable */}
-                        <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 mt-4">
-                            <div className="flex items-start gap-2">
-                                <MessageSquare size={16} className="text-blue-600 mt-0.5 shrink-0" />
-                                <div className="w-full">
-                                    <span className="text-[10px] font-bold text-blue-600 uppercase mb-1 block">Podsumowanie treningu</span>
-                                    <textarea 
-                                        value={training.feedback || ''} 
-                                        onChange={(e) => onUpdateTraining(training.id, 'feedback', e.target.value)} 
-                                        className="w-full bg-blue-50/50 border border-blue-100 rounded p-2 text-xs outline-none focus:bg-white focus:border-blue-300 transition" 
-                                        rows="2" 
-                                        placeholder="Jak poszło? Wpisz tutaj swoje odczucia..." 
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             );
         }
@@ -949,25 +677,12 @@
                     const next = prev.map(t => {
                         if (t.id !== id) return t;
                         const newEx = [...t.exercises];
-
-                        // Logic for changing exercise type and updating defaults
                         if (field === 'exerciseId') {
                              const libEx = exerciseLibrary.find(e => e.id === value);
                              if (libEx) {
-                                 newEx[idx] = {
-                                     ...newEx[idx],
-                                     exerciseId: value,
-                                     description: libEx.defaultDescription,
-                                     series: libEx.defaultSeries,
-                                     reps: libEx.defaultReps,
-                                     load: libEx.defaultLoad,
-                                     timeRep: libEx.defaultTimeRep,
-                                     restRep: libEx.defaultRestRep,
-                                     restSet: libEx.defaultRestSet
-                                 };
+                                 newEx[idx] = { ...newEx[idx], exerciseId: value, description: libEx.defaultDescription, series: libEx.defaultSeries, reps: libEx.defaultReps, load: libEx.defaultLoad, timeRep: libEx.defaultTimeRep, restRep: libEx.defaultRestRep, restSet: libEx.defaultRestSet };
                              }
                         } else {
-                            // Standard update
                             newEx[idx] = { ...newEx[idx], [field]: value };
                         }
                         return { ...t, exercises: newEx };
@@ -982,26 +697,8 @@
                 setTrainings(prev => {
                     const next = prev.map(t => {
                         if (t.id !== id) return t;
-                        const currentExercises = Array.isArray(t.exercises) ? t.exercises : [];
                         const defaultEx = exerciseLibrary[0] || {};
-                        return { 
-                            ...t, 
-                            exercises: [
-                                ...currentExercises, 
-                                { 
-                                    exerciseId: defaultEx.id || 'unknown', 
-                                    description: defaultEx.defaultDescription || '', 
-                                    series: defaultEx.defaultSeries || 3, 
-                                    reps: defaultEx.defaultReps || '10', 
-                                    load: defaultEx.defaultLoad || '-', 
-                                    timeRep: defaultEx.defaultTimeRep || '',
-                                    restRep: defaultEx.defaultRestRep || '',
-                                    restSet: defaultEx.defaultRestSet || '',
-                                    actual: '',
-                                    status: null // 'done', 'attention', 'skipped'
-                                }
-                            ] 
-                        };
+                        return { ...t, exercises: [...(t.exercises||[]), { exerciseId: defaultEx.id || 'unknown', description: defaultEx.defaultDescription || '', series: defaultEx.defaultSeries || 3, reps: defaultEx.defaultReps || '10', load: defaultEx.defaultLoad || '-', timeRep: defaultEx.defaultTimeRep || '', restRep: defaultEx.defaultRestRep || '', restSet: defaultEx.defaultRestSet || '', actual: '', status: null }] };
                     });
                     const updated = next.find(t => t.id === id);
                     if (updated) saveTrainingToDb(updated);
@@ -1035,32 +732,11 @@
             const handleAddT = async () => {
                 const newId = Date.now();
                 const defaultEx = exerciseLibrary[0] || {};
-                const newT = { 
-                    id: newId, 
-                    date: new Date().toISOString().split('T')[0], 
-                    location: '', 
-                    isCompleted: false, 
-                    feedback: '', 
-                    coachNotes: '', 
-                    exercises: [{ 
-                        exerciseId: defaultEx.id || 'unknown', 
-                        description: defaultEx.defaultDescription || '', 
-                        series: defaultEx.defaultSeries || 3, 
-                        reps: defaultEx.defaultReps || '10', 
-                        load: defaultEx.defaultLoad || '-',
-                        timeRep: defaultEx.defaultTimeRep || '',
-                        restRep: defaultEx.defaultRestRep || '',
-                        restSet: defaultEx.defaultRestSet || '',
-                        actual: '',
-                        status: null
-                    }] 
-                };
-                
+                const newT = { id: newId, date: new Date().toISOString().split('T')[0], location: '', isCompleted: false, feedback: '', coachNotes: '', exercises: [{ exerciseId: defaultEx.id || 'unknown', description: defaultEx.defaultDescription || '', series: defaultEx.defaultSeries || 3, reps: defaultEx.defaultReps || '10', load: defaultEx.defaultLoad || '-', timeRep: defaultEx.defaultTimeRep || '', restRep: defaultEx.defaultRestRep || '', restSet: defaultEx.defaultRestSet || '', actual: '', status: null }] };
                 if (user && window.firestoreOps) {
                     const ref = window.firestoreOps.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'trainings', newId.toString());
                     await window.firestoreOps.setDoc(ref, newT);
                 }
-                
                 setTrainings(p => [newT, ...p]);
                 setSelectedId(newId);
             };
@@ -1072,19 +748,8 @@
             };
 
             const handleAddLib = () => {
-                const newEx = {
-                    id: `ex_${Date.now()}`,
-                    name: 'Nowe Ćwiczenie',
-                    category: 'Ogólne',
-                    defaultSeries: 3,
-                    defaultReps: '10',
-                    defaultLoad: '-',
-                    defaultRestSet: '',
-                    defaultTimeRep: '',
-                    defaultRestRep: '',
-                    defaultDescription: ''
-                };
-                const newLib = [newEx, ...exerciseLibrary]; // Added to top
+                const newEx = { id: `ex_${Date.now()}`, name: 'Nowe Ćwiczenie', category: 'Ogólne', defaultSeries: 3, defaultReps: '10', defaultLoad: '-', defaultRestSet: '', defaultTimeRep: '', defaultRestRep: '', defaultDescription: '' };
+                const newLib = [newEx, ...exerciseLibrary];
                 setExerciseLibrary(newLib);
                 saveLibraryToDb(newLib);
             };
@@ -1120,7 +785,12 @@
                             onStartTimer={handleStartTimer}
                         />
                     ) : activeTab === 'trainings' ? (
-                        <TrainingListView trainings={trainings} onSelect={(id) => { setSelectedId(id); }} onAdd={handleAddT} exerciseLibrary={exerciseLibrary} />
+                        <TrainingListView 
+                            trainings={trainings} 
+                            onSelect={(id) => { setSelectedId(id); }} 
+                            onAdd={handleAddT} 
+                            exerciseLibrary={exerciseLibrary} 
+                        />
                     ) : activeTab === 'analytics' ? (
                         <AnalyticsView trainings={trainings} exerciseLibrary={exerciseLibrary} />
                     ) : (
