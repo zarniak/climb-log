@@ -127,6 +127,7 @@
         const RotateCcw = (p) => <IconBase {...p}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/><path d="M3 3v9h9"/></IconBase>;
         const SkipBack = (p) => <IconBase {...p}><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5"/></IconBase>;
         const SkipForward = (p) => <IconBase {...p}><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></IconBase>;
+        const Settings = (p) => <IconBase {...p}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></IconBase>;
 
         // --- KOMPONENTY UI ---
         function Card({ children, className = "" }) {
@@ -333,15 +334,47 @@
 
             for (let s = 1; s <= series; s++) {
                 for (let r = 1; r <= reps; r++) {
-                    if (timeRep > 0) {
-                        steps.push({ type: 'work', duration: timeRep, label: `Praca (S:${s}/${series} P:${r}/${reps})`, color: 'bg-red-600', text: 'text-red-100', ring: 'ring-red-400', seriesIdx: s, repsIdx: r });
-                    }
-                    if (r < reps && restRep > 0) {
-                        steps.push({ type: 'rest_rep', duration: restRep, label: `Przerwa (S:${s}/${series})`, color: 'bg-blue-500', text: 'text-blue-100', ring: 'ring-blue-300', seriesIdx: s, repsIdx: r });
+                    // WORK
+                    steps.push({ 
+                        type: 'work', 
+                        duration: timeRep > 0 ? timeRep : 0, 
+                        manual: timeRep <= 0,
+                        label: `Praca (S:${s}/${series} P:${r}/${reps})`, 
+                        color: 'bg-red-600', 
+                        text: 'text-red-100', 
+                        ring: 'ring-red-400', 
+                        seriesIdx: s, 
+                        repsIdx: r 
+                    });
+                    
+                    // REST REP
+                    if (r < reps) {
+                        steps.push({ 
+                            type: 'rest_rep', 
+                            duration: restRep > 0 ? restRep : 0, 
+                            manual: restRep <= 0,
+                            label: `Przerwa (S:${s}/${series})`, 
+                            color: 'bg-blue-500', 
+                            text: 'text-blue-100', 
+                            ring: 'ring-blue-300', 
+                            seriesIdx: s, 
+                            repsIdx: r 
+                        });
                     }
                 }
-                if (s < series && restSet > 0) {
-                    steps.push({ type: 'rest_set', duration: restSet, label: 'Przerwa między seriami', color: 'bg-amber-500', text: 'text-amber-100', ring: 'ring-amber-300', seriesIdx: s });
+                
+                // REST SET
+                if (s < series) {
+                    steps.push({ 
+                        type: 'rest_set', 
+                        duration: restSet > 0 ? restSet : 0, 
+                        manual: restSet <= 0,
+                        label: 'Przerwa między seriami', 
+                        color: 'bg-amber-500', 
+                        text: 'text-amber-100', 
+                        ring: 'ring-amber-300', 
+                        seriesIdx: s 
+                    });
                 }
             }
 
@@ -394,8 +427,10 @@
 
             useEffect(() => {
                 let interval = null;
-                if (isRunning && currentStepIndex < steps.length) {
-                    // First enter step sound? Handled by transition logic mostly.
+                const currentStep = steps[currentStepIndex];
+                
+                // Only run timer if running AND not a manual step
+                if (isRunning && currentStep && !currentStep.manual && currentStepIndex < steps.length) {
                     
                     interval = setInterval(() => {
                         setTimeLeft((prev) => {
@@ -439,12 +474,17 @@
                 const nextIndex = currentStepIndex + 1;
                 if (nextIndex < steps.length) {
                     setCurrentStepIndex(nextIndex);
-                    setTimeLeft(steps[nextIndex].duration);
+                    const nextStep = steps[nextIndex];
+                    setTimeLeft(nextStep.duration);
+                    if(!nextStep.manual) setIsRunning(true); // Auto-start next if timer
+                    else setIsRunning(false); 
+                    playStepSound(nextStep.type);
                 } else {
                     // Go to done
                      setCurrentStepIndex(steps.length - 1);
                      setTimeLeft(0);
                      setIsRunning(false);
+                     playStepSound('done');
                 }
             };
 
@@ -460,8 +500,12 @@
             };
 
             const togglePlay = () => {
-                if (!isRunning) SoundEngine.init(); // Ensure context is running on user interaction
-                setIsRunning(!isRunning);
+                if(currentStep.manual) {
+                    handleNext();
+                } else {
+                    if (!isRunning) SoundEngine.init(); // Ensure context is running on user interaction
+                    setIsRunning(!isRunning);
+                }
             }
 
             const formatTime = (seconds) => {
@@ -483,7 +527,7 @@
                         <div className={`text-xl font-medium mb-8 opacity-90 ${currentStep.text}`}>{currentStep.label}</div>
                         
                         <div className="text-[120px] font-black text-white leading-none tabular-nums tracking-tighter drop-shadow-lg mb-8">
-                            {isFinished ? <Check size={100}/> : formatTime(timeLeft)}
+                            {isFinished ? <Check size={100}/> : (currentStep.manual ? '∞' : formatTime(timeLeft))}
                         </div>
 
                         {!isFinished && (
@@ -493,9 +537,9 @@
                                     <SkipBack size={20} />
                                 </button>
                                 
-                                {/* Play/Pause */}
+                                {/* Play/Pause or Next(Manual) */}
                                 <button onClick={togglePlay} className="bg-white text-gray-800 w-20 h-20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition">
-                                    {isRunning ? <Pause size={36} /> : <Play size={36} className="ml-1" />}
+                                    {currentStep.manual ? <Check size={36} /> : (isRunning ? <Pause size={36} /> : <Play size={36} className="ml-1" />)}
                                 </button>
 
                                 {/* Reset */}
@@ -524,7 +568,7 @@
                                 return (
                                     <div key={idx} className={`flex items-center p-3 rounded-xl transition-all ${isCurrent ? `bg-gray-100 border-l-4 ${currentStep.color.replace('bg-', 'border-')} shadow-sm` : 'opacity-50 grayscale'}`}>
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white mr-3 shrink-0 ${step.color}`}>
-                                            {step.duration}s
+                                            {step.manual ? '∞' : step.duration + 's'}
                                         </div>
                                         <div className="text-left">
                                             <div className="text-sm font-bold text-gray-800">{step.label}</div>
@@ -711,8 +755,8 @@
                                     onUpdateExercise(training.id, idx, 'status', next);
                                 };
 
-                                // Check if timer is available for this exercise
-                                const canTimer = !isEditingThis && (parseTime(ex.timeRep) > 0 || parseTime(ex.restRep) > 0 || parseTime(ex.restSet) > 0);
+                                // Check if timer is available for this exercise - ALWAYS TRUE NOW (unless editing)
+                                const canTimer = !isEditingThis;
 
                                 return (
                                 <div key={idx} className="bg-white border border-gray-100 rounded-xl p-4 relative shadow-sm hover:border-blue-200 transition">
