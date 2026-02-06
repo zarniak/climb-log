@@ -1,55 +1,22 @@
-🧗‍♂️ ClimbLog - Dziennik Treningowy Wspinacza
+ClimbLog 🧗‍♂️Trener Wspinaczki Online – Od wspinacza dla wspinacza.ClimbLog to darmowa, otwarta aplikacja typu Single Page Application (SPA), która służy do planowania, monitorowania i analizowania treningów wspinaczkowych. Projekt powstał z myślą o prostocie i dostępności – nie wymaga skomplikowanej instalacji, a całość kodu mieści się w jednym pliku, co ułatwia modyfikacje.🌟 Główne FunkcjonalnościPlanowanie Treningów: Tworzenie rozpisek treningowych z podziałem na daty i lokalizacje (np. nazwy ścian wspinaczkowych).Interaktywny Timer: Wbudowany zegar obsługujący skomplikowane interwały (czas pracy, przerwa między powtórzeniami, przerwa między seriami) wraz z sygnałami dźwiękowymi.Baza Ćwiczeń: Edytowalna biblioteka ćwiczeń z możliwością definiowania domyślnych parametrów (serie, powtórzenia, obciążenie).Śledzenie Postępów: Historia wykonanych treningów oraz analityka wyników dla konkretnych ćwiczeń.Notatki Trenera: Miejsce na uwagi i cele treningowe.Synchronizacja w Chmurze: Dzięki integracji z Firebase Twoje dane są bezpieczne i dostępne na każdym urządzeniu.🛠 Użyte TechnologieAplikacja została zbudowana w nowoczesnym podejściu "No-Build", co oznacza, że nie wymaga kompilatorów, Node.js ani skomplikowanych środowisk programistycznych do działania.Frontend: HTML5 + React 18 (ładowany przez CDN).Style: Tailwind CSS (ładowany przez CDN).Kompilacja w locie: Babel (Standalone) – przetwarza kod JSX bezpośrednio w przeglądarce.Backend (BaaS): Google Firebase (Firestore Database + Authentication).Audio: Web Audio API (generowanie dźwięków timera bez zewnętrznych plików mp3).🚀 Jak uruchomić (Instalacja i Hosting)Ponieważ aplikacja to jeden plik index.html, jej "instalacja" jest banalnie prosta.Sposób 1: Uruchomienie lokalnePobierz plik index.html.Otwórz go w dowolnej przeglądarce internetowej.Gotowe! (Pamiętaj o konfiguracji Firebase poniżej).Sposób 2: Darmowy Hosting (Zalecane)Aby mieć dostęp do aplikacji z telefonu na ścianie wspinaczkowej, najlepiej wrzucić ją na darmowy hosting plików statycznych.GitHub Pages: Wrzuć plik do repozytorium i włącz Pages w ustawieniach.Render / Netlify / Vercel: Po prostu przeciągnij plik lub podłącz repozytorium Git.Własny serwer: Wrzuć plik przez FTP.🔥 Konfiguracja Bazy Danych (Firebase)Aby aplikacja zapamiętywała Twoje treningi, musisz utworzyć darmowy projekt w Google Firebase. Zajmie to około 3 minuty.Krok 1: Utworzenie projektuWejdź na stronę Firebase Console.Kliknij "Add project" (Dodaj projekt).Nazwij projekt (np. ClimbLog-TwojeImie).Google Analytics możesz wyłączyć (nie jest potrzebne).Kliknij Create project.Krok 2: Włączenie Bazy Danych (Firestore)W panelu po lewej wybierz Build -> Firestore Database.Kliknij Create database.Wybierz lokalizację serwera (najlepiej eur3 - Europe West, dla szybkości w Polsce).Wybierz tryb Start in production mode.Krok 3: Włączenie Logowania (Authentication)Aplikacja używa "anonimowego logowania", aby zabezpieczyć dane przed dostępem z zewnątrz.W panelu po lewej wybierz Build -> Authentication.Kliknij Get started.W zakładce Sign-in method wybierz Anonymous.Przełącz na Enable i zapisz (Save).Krok 4: Pobranie kluczy APIKliknij ikonę koła zębatego (Project settings) obok "Project Overview".Na dole w sekcji "Your apps" kliknij ikonę Web (</>).Wpisz nazwę aplikacji (np. ClimbLog Web) i kliknij Register app.Pojawi się kod konfiguracyjny (const firebaseConfig = { ... }).Skopiuj wartości z tego obiektu (apiKey, authDomain, projectId itd.) i wklej je do pliku index.html w sekcji userConfig (ok. linii 67).🔒 Zabezpieczenie Bazy (Security Rules)To kluczowy krok, aby nikt niepowołany nie usunął Twoich treningów.W konsoli Firebase przejdź do Firestore Database -> Rules.Usuń wszystko co tam jest i wklej poniższy kod:rules_version = '2';
 
-Interaktywna aplikacja typu PWA (Progressive Web App) do śledzenia postępów w treningu wspinaczkowym, analizy wyników i zarządzania planem treningowym.
+service cloud.firestore {
+  match /databases/{database}/documents {
 
-🌟 Funkcje
+    // Funkcja sprawdzająca czy użytkownik jest zalogowany (aplikacja robi to automatycznie)
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
-Dziennik Treningowy: Przejrzysta lista treningów z podziałem na zaplanowane i ukończone.
-
-Statusy: Wizualne oznaczanie treningów (Zaplanowany / Ukończony).
-
-Baza Ćwiczeń: Zdefiniowana lista ćwiczeń (Campusing, Chwytotablica, Obwody) ze zdjęciami.
-
-Analiza Postępu: Wykresy liniowe pokazujące progres w konkretnych ćwiczeniach (np. czas w planku, obciążenie w zwisie).
-
-Filtrowanie: Możliwość ukrycia zakończonych treningów, aby skupić się na bieżących celach.
-
-Eksport do Kalendarza: Generowanie linków do Google Calendar.
-
-AI Coach Insight: (Symulacja) Sekcja z poradami opartymi na analizie danych.
-
-🛠 Technologie
-
-Aplikacja została zbudowana w architekturze Single File Component, co oznacza, że cały kod znajduje się w jednym pliku HTML, co ułatwia przenoszenie i uruchamianie.
-
-React 18 (ładowany przez CDN)
-
-Tailwind CSS (stylowanie)
-
-Recharts (wizualizacja danych)
-
-Babel (transpilacja kodu w przeglądarce)
-
-🚀 Jak uruchomić lokalnie?
-
-Pobierz plik index.html.
-
-Otwórz go w dowolnej nowoczesnej przeglądarce (Chrome, Firefox, Safari, Edge).
-
-Gotowe! Aplikacja nie wymaga instalacji Node.js ani npm install.
-
-🌐 Wdrożenie (Deployment)
-
-Aplikacja jest gotowa do wdrożenia jako Static Site na platformach takich jak:
-
-Render
-
-GitHub Pages
-
-Netlify
-
-Vercel
-
-Wymagane jest jedynie wrzucenie pliku index.html do głównego katalogu repozytorium lub serwera.
-
-Projekt stworzony przy użyciu AI jako asystenta kodowania.
+    // Pozwól na dostęp do danych tylko zalogowanym użytkownikom aplikacji
+    match /artifacts/{appId}/public/data/{document=**} {
+      allow read, write: if isSignedIn();
+    }
+    
+    // Zablokuj dostęp do wszystkiego innego
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+Kliknij Publish.Dodatkowe zabezpieczenie (Opcjonalne)W Google Cloud Console możesz edytować swój Browser key i w sekcji Website restrictions dodać domenę swojej strony (np. twoja-strona.netlify.app). Dzięki temu nikt nie użyje Twojego klucza API na innej stronie.📄 LicencjaProjekt udostępniony na licencji MIT. Możesz go dowolnie modyfikować, używać i udostępniać znajomym.Miłego wspinania! 💪
