@@ -379,11 +379,12 @@
                     if (generatedSteps.length > 0) {
                         setTimeLeft(generatedSteps[0].duration);
                         setIsRunning(true);
-                        SoundEngine.init();
+                        SoundEngine.init(); // Pre-init audio context on load
                     }
                 }
             }, [timerData]);
 
+            // Effect to handle sounds on step change or tick
             const playStepSound = (type) => {
                 if(type === 'work') SoundEngine.playWhistle();
                 else if(type === 'rest_rep') SoundEngine.playGong(false);
@@ -394,12 +395,17 @@
             useEffect(() => {
                 let interval = null;
                 if (isRunning && currentStepIndex < steps.length) {
+                    // First enter step sound? Handled by transition logic mostly.
+                    
                     interval = setInterval(() => {
                         setTimeLeft((prev) => {
+                            // Ticking sound for last 3 seconds (3, 2, 1)
                             if (prev <= 4 && prev > 1) {
                                 SoundEngine.playTick();
                             }
+
                             if (prev <= 1) {
+                                // Next Step Logic
                                 const nextIndex = currentStepIndex + 1;
                                 if (nextIndex < steps.length) {
                                     setCurrentStepIndex(nextIndex);
@@ -407,6 +413,7 @@
                                     playStepSound(nextStep.type);
                                     return nextStep.duration;
                                 } else {
+                                    // Finished
                                     playStepSound('done');
                                     setIsRunning(false);
                                     return 0;
@@ -434,6 +441,7 @@
                     setCurrentStepIndex(nextIndex);
                     setTimeLeft(steps[nextIndex].duration);
                 } else {
+                    // Go to done
                      setCurrentStepIndex(steps.length - 1);
                      setTimeLeft(0);
                      setIsRunning(false);
@@ -446,12 +454,13 @@
                     setCurrentStepIndex(prevIndex);
                     setTimeLeft(steps[prevIndex].duration);
                 } else {
+                    // Restart current
                     setTimeLeft(steps[0].duration);
                 }
             };
 
             const togglePlay = () => {
-                if (!isRunning) SoundEngine.init();
+                if (!isRunning) SoundEngine.init(); // Ensure context is running on user interaction
                 setIsRunning(!isRunning);
             }
 
@@ -479,15 +488,22 @@
 
                         {!isFinished && (
                             <div className="flex gap-4 mb-8 items-center">
+                                {/* Previous */}
                                 <button onClick={handlePrev} className="bg-white/20 text-white w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/30 transition active:scale-95">
                                     <SkipBack size={20} />
                                 </button>
+                                
+                                {/* Play/Pause */}
                                 <button onClick={togglePlay} className="bg-white text-gray-800 w-20 h-20 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition">
                                     {isRunning ? <Pause size={36} /> : <Play size={36} className="ml-1" />}
                                 </button>
+
+                                {/* Reset */}
                                 <button onClick={handleReset} className="bg-white/20 text-white w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/30 transition active:scale-95">
                                     <RotateCcw size={20} />
                                 </button>
+
+                                {/* Next */}
                                 <button onClick={handleNext} className="bg-white/20 text-white w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md hover:bg-white/30 transition active:scale-95">
                                     <SkipForward size={20} />
                                 </button>
@@ -495,6 +511,7 @@
                         )}
                     </div>
 
+                    {/* Upcoming Steps List - "Jak na zdjęciu" (Scrolling list of segments) */}
                     <div className="bg-white/95 backdrop-blur-md rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] h-1/3 overflow-hidden flex flex-col">
                         <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-white">
                             <span className="text-xs font-bold uppercase text-gray-400 tracking-wider">Plan treningu</span>
@@ -502,7 +519,7 @@
                         </div>
                         <div className="overflow-y-auto p-2 space-y-2 flex-1 no-scrollbar">
                             {steps.map((step, idx) => {
-                                if (idx < currentStepIndex) return null;
+                                if (idx < currentStepIndex) return null; // Hide passed steps
                                 const isCurrent = idx === currentStepIndex;
                                 return (
                                     <div key={idx} className={`flex items-center p-3 rounded-xl transition-all ${isCurrent ? `bg-gray-100 border-l-4 ${currentStep.color.replace('bg-', 'border-')} shadow-sm` : 'opacity-50 grayscale'}`}>
@@ -627,7 +644,21 @@
                             <div className="flex items-center mt-2 text-gray-500 text-sm">
                                 <MapPin size={14} className="mr-1.5 text-blue-500" />
                                 {isHeaderEditing ? (
-                                    <input value={training.location} onChange={(e) => onUpdateTraining(training.id, 'location', e.target.value)} className="clean-input w-full text-sm" placeholder="Gdzie się wspinasz?" />
+                                    <>
+                                        <input 
+                                            list="gym-locations" 
+                                            value={training.location} 
+                                            onChange={(e) => onUpdateTraining(training.id, 'location', e.target.value)} 
+                                            className="clean-input w-full text-sm" 
+                                            placeholder="Gdzie się wspinasz?" 
+                                        />
+                                        <datalist id="gym-locations">
+                                            <option value="Groto Bulderownia" />
+                                            <option value="Karma Grunwald" />
+                                            <option value="Karma Dębiec" />
+                                            <option value="Blokline" />
+                                        </datalist>
+                                    </>
                                 ) : (
                                     training.location ? (
                                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(training.location)}`} target="_blank" rel="noreferrer" className="hover:underline hover:text-blue-600">
@@ -833,7 +864,7 @@
                                             {getStatusIconLarge(ex.status)}
                                         </div>
                                     </div>
-                                    <span className="text-xs text-gray-600 font-mono text-right">{formatEx(ex)}</span>
+                                    <span className="text-xs text-gray-600 text-right">{formatEx(ex)}</span>
                                 </div>
                                 {ex.actual && (
                                     <div className="text-[10px] text-gray-500 italic border-t border-gray-50 pt-1 mt-1">
@@ -1137,7 +1168,7 @@
                 const newT = { 
                     id: newId, 
                     date: new Date().toISOString().split('T')[0], 
-                    location: '', 
+                    location: 'Groto Bulderownia', 
                     isCompleted: false, 
                     feedback: '', 
                     coachNotes: '', 
